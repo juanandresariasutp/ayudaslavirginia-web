@@ -1,0 +1,19 @@
+node_modules/
+dist/
+*.local
+.DS_Store
+*.tsbuildinfo
+coverage/
+
+# Variables de entorno locales y secretos
+.env
+.env.*
+!.env.example
+
+# Seeds locales con credenciales de desarrollo
+supabase/seed.sql
+supabase/seed.local.sql
+supabase/*.seed.sql
+
+# Evidencia local usada durante desarrollo; no pertenece al código fuente
+/7bc7dd51-f76e-48e4-b929-5e1b34da529c.png

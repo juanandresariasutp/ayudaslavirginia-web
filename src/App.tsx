@@ -1,0 +1,268 @@
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react'
+import type React from 'react'
+import { initialAdmins, initialChanges, initialRequests } from './data'
+import type { AdminUser, Category, ChangeRequest, DocumentType, HelpRequest, Location, Priority, Status } from './types'
+import { createAdmin, deleteAdmin, deleteChange, deleteRequest, getAdminProfile, getChanges, getEvidenceUrl, getPrivateRequest, getPublicRequests, insertChange, insertRequest, listAdmins, login, logout, reviewChange, savedSession, supabaseConfigured, updateAdmin, updateRequest, uploadEvidence } from './lib/supabase'
+import type { Session } from './lib/supabase'
+
+type View = 'dashboard' | 'mapa' | 'admin'
+type Sort = 'priority' | 'recent' | 'oldest'
+const PAGE_SIZE = 25
+const categories: Array<'Todas' | Category> = ['Todas', 'Alimentos', 'Escombros', 'Mudanza y acarreo', 'Implementos de aseo', 'Juguetes', 'Salud', 'Alojamiento', 'Otros']
+const statuses: Array<'Todos' | Status> = ['Todos', 'Sin atender', 'En progreso', 'Completada']
+const priorityWeight: Record<Priority, number> = { Crítica: 0, Alta: 1, Media: 2, Baja: 3 }
+const categoryToDb: Record<Category, string> = { Alimentos: 'food', Escombros: 'debris', 'Mudanza y acarreo': 'moving', 'Implementos de aseo': 'cleaning_supplies', Juguetes: 'toys', Salud: 'health', Alojamiento: 'shelter', Otros: 'other' }
+const dbToCategory: Record<string, Category> = Object.fromEntries(Object.entries(categoryToDb).map(([key, value]) => [value, key])) as Record<string, Category>
+const priorityToDb: Record<Priority, string> = { Crítica: 'critical', Alta: 'high', Media: 'medium', Baja: 'low' }
+const dbToPriority: Record<string, Priority> = { critical: 'Crítica', high: 'Alta', medium: 'Media', low: 'Baja' }
+const dbToStatus: Record<string, Status> = { pending: 'Sin atender', in_progress: 'En progreso', completed: 'Completada' }
+
+function mapPublic(row: Record<string, unknown>): HelpRequest {
+  return { id: String(row.id), publicCode: String(row.public_code ?? row.id), fullName: 'Dato protegido', documentType: 'Cédula de ciudadanía', documentNumber: 'PROTEGIDO', phone: 'PROTEGIDO', neighborhood: String(row.neighborhood), address: 'Dirección protegida', description: String(row.description), category: dbToCategory[String(row.category)] ?? 'Otros', status: dbToStatus[String(row.status)] ?? 'Sin atender', priority: dbToPriority[String(row.priority)] ?? 'Media', createdAt: String(row.created_at), location: row.public_latitude == null ? undefined : { latitude: Number(row.public_latitude), longitude: Number(row.public_longitude) } }
+}
+
+function mapPrivate(row: Record<string, unknown>): HelpRequest {
+  return { id: String(row.id), publicCode: String(row.public_code ?? row.id), fullName: String(row.full_name), documentType: String(row.document_type) as DocumentType, documentNumber: String(row.document_number), phone: String(row.phone), neighborhood: String(row.neighborhood), address: String(row.exact_address), description: String(row.description), category: dbToCategory[String(row.category)] ?? 'Otros', status: dbToStatus[String(row.status)] ?? 'Sin atender', priority: dbToPriority[String(row.verified_priority ?? row.declared_priority)] ?? 'Media', createdAt: String(row.created_at), location: row.exact_latitude == null ? undefined : { latitude: Number(row.exact_latitude), longitude: Number(row.exact_longitude) }, requestPhotoName: row.request_photo_path ? String(row.request_photo_path) : undefined }
+}
+
+declare global {
+  interface Window { L?: { map: (element: HTMLElement) => LeafletMap; tileLayer: (url: string, options: object) => { addTo: (map: LeafletMap) => void }; marker: (point: [number, number]) => LeafletMarker } }
+}
+interface LeafletMap { setView: (point: [number, number], zoom: number) => LeafletMap; on: (event: string, handler: (event: { latlng: { lat: number; lng: number } }) => void) => LeafletMap; remove: () => void }
+interface LeafletMarker { addTo: (map: LeafletMap) => LeafletMarker; bindPopup: (content: string) => LeafletMarker }
+
+function Header({ menuOpen, toggleMenu }: { menuOpen: boolean; toggleMenu: () => void }) {
+  return <header className="page-header"><div className="brand-line"><div className="brand-mark">♥</div><div><h1>Ayudas La Virginia</h1><p>Juntos nos levantamos</p></div></div><button className="menu-toggle" aria-label="Abrir menú" aria-expanded={menuOpen} aria-controls="main-sidebar" onClick={toggleMenu}><span></span><span></span><span></span></button></header>
+}
+
+function requestDateTime(value: string) {
+  return new Intl.DateTimeFormat('es-CO', { timeZone: 'America/Bogota', day: 'numeric', month: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true }).format(new Date(value))
+}
+
+function displayRequestCode(request: HelpRequest) {
+  return request.publicCode?.startsWith('solicitud_') ? request.publicCode : 'solicitud_pendiente'
+}
+
+function requestSubmissionError(error: unknown) {
+  const message = error instanceof Error ? error.message : ''
+  if (message.includes('help_requests_description_check')) return 'La descripción debe tener entre 10 y 2000 caracteres.'
+  if (message.includes('help_requests_new_consent_proof_required')) return 'Debes aceptar el tratamiento de datos y confirmar que eres una persona.'
+  if (message.includes('help_requests_full_name_check')) return 'El nombre completo debe tener entre 3 y 120 caracteres.'
+  return 'No fue posible enviar la solicitud. Revisa los campos e inténtalo nuevamente.'
+}
+
+function normalizePersonName(value: string) {
+  return value.toLocaleLowerCase('es-CO').replace(/(^|[\s'-])\p{L}/gu, letter => letter.toLocaleUpperCase('es-CO'))
+}
+
+function formatName(event: React.FormEvent<HTMLInputElement>) {
+  event.currentTarget.value = normalizePersonName(event.currentTarget.value.replace(/[^\p{L}\p{M}\s'-]/gu, ''))
+}
+
+function digitsOnly(event: React.FormEvent<HTMLInputElement>) {
+  event.currentTarget.value = event.currentTarget.value.replace(/\D/g, '')
+}
+
+function PasswordInput({ name = 'password', autoComplete, placeholder, required = false, minLength }: { name?: string; autoComplete?: string; placeholder?: string; required?: boolean; minLength?: number }) {
+  const [visible, setVisible] = useState(false)
+  return <div className="password-field"><input name={name} type={visible ? 'text' : 'password'} autoComplete={autoComplete} placeholder={placeholder} required={required} minLength={minLength} /><button type="button" aria-label={visible ? 'Ocultar contraseña' : 'Mostrar contraseña'} aria-pressed={visible} onClick={() => setVisible(current => !current)}>{visible ? '◉' : '◉̸'}</button></div>
+}
+
+function RequestCard({ request, onChange }: { request: HelpRequest; onChange: (request: HelpRequest) => void }) {
+  return <article className="ticket-card"><div className="ticket-top"><span className={`tag urgency-${request.priority.toLowerCase().replace('í', 'i')}`}>{request.priority}</span><span className="ticket-id">{displayRequestCode(request)}</span></div><div className="card-category">{request.category}</div><h3>{request.neighborhood}</h3><p>{request.description}</p><div className="ticket-bottom"><time dateTime={request.createdAt}>{requestDateTime(request.createdAt)}</time><span className={`request-status status-${request.status.toLowerCase().replace(' ', '-')}`}>{request.status}</span></div>{request.status !== 'Completada' && <button className="card-action" onClick={() => onChange(request)}>Reportar avance</button>}</article>
+}
+
+function LeafletMap({ requests, onPick }: { requests: HelpRequest[]; onPick?: (location: Location) => void }) {
+  const element = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!element.current || !window.L) return
+    const center = requests.find(r => r.location)?.location ?? { latitude: 4.895, longitude: -75.883 }
+    const map = window.L.map(element.current).setView([center.latitude, center.longitude], 15)
+    window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap contributors', maxZoom: 19 }).addTo(map)
+    if (onPick) map.on('click', event => onPick({ latitude: event.latlng.lat, longitude: event.latlng.lng }))
+    const grouped = new Map<string, HelpRequest[]>(); requests.filter(r => r.location).forEach(request => { const key = `${request.location!.latitude.toFixed(3)},${request.location!.longitude.toFixed(3)}`; grouped.set(key, [...(grouped.get(key) ?? []), request]) })
+    grouped.forEach(group => { const location = group[0].location!; const items = group.map(request => `<li><strong>${request.category}</strong> · ${request.status}<br>${request.description}</li>`).join(''); window.L!.marker([location.latitude, location.longitude]).addTo(map).bindPopup(`<strong>${group[0].neighborhood}</strong><br>${group.length} solicitud(es)<ul class="map-popup-list">${items}</ul>`) })
+    return () => map.remove()
+  }, [requests, onPick])
+  return <div ref={element} className={`leaflet-map ${onPick ? 'location-picker-map' : ''}`}><div className="map-fallback">Cargando mapa Leaflet…</div></div>
+}
+
+function SignaturePad({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  type SignaturePoint = { x: number; y: number }
+  const canvas = useRef<HTMLCanvasElement>(null)
+  const strokes = useRef<SignaturePoint[][]>([])
+  const activeStroke = useRef<SignaturePoint[] | null>(null)
+
+  function coordinates(event: React.PointerEvent<HTMLCanvasElement>): SignaturePoint {
+    const rect = event.currentTarget.getBoundingClientRect()
+    return { x: Math.round((event.clientX - rect.left) * 560 / rect.width), y: Math.round((event.clientY - rect.top) * 180 / rect.height) }
+  }
+  function context() {
+    const drawingContext = canvas.current?.getContext('2d')
+    if (drawingContext) { drawingContext.strokeStyle = '#17352b'; drawingContext.fillStyle = '#17352b'; drawingContext.lineWidth = 3; drawingContext.lineCap = 'round'; drawingContext.lineJoin = 'round' }
+    return drawingContext
+  }
+  function compactSvg() {
+    const lines = strokes.current.filter(stroke => stroke.length).map(stroke => {
+      const points = stroke.length === 1 ? `${stroke[0].x},${stroke[0].y} ${stroke[0].x + 1},${stroke[0].y}` : stroke.map(point => `${point.x},${point.y}`).join(' ')
+      return `<polyline points="${points}"/>`
+    }).join('')
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 180"><g fill="none" stroke="#17352b" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">${lines}</g></svg>`
+  }
+  function start(event: React.PointerEvent<HTMLCanvasElement>) {
+    event.preventDefault()
+    const point = coordinates(event)
+    const stroke = [point]
+    strokes.current.push(stroke)
+    activeStroke.current = stroke
+    const drawingContext = context()
+    drawingContext?.beginPath(); drawingContext?.arc(point.x, point.y, 1.5, 0, Math.PI * 2); drawingContext?.fill()
+    try { event.currentTarget.setPointerCapture(event.pointerId) } catch { /* Safari puede no admitirlo; el trazo sigue siendo válido. */ }
+    onChange(compactSvg())
+  }
+  function move(event: React.PointerEvent<HTMLCanvasElement>) {
+    const stroke = activeStroke.current
+    if (!stroke) return
+    event.preventDefault()
+    const next = coordinates(event); const previous = stroke[stroke.length - 1]
+    if (Math.hypot(next.x - previous.x, next.y - previous.y) < 3) return
+    stroke.push(next)
+    const drawingContext = context()
+    if (drawingContext) { drawingContext.beginPath(); drawingContext.moveTo(previous.x, previous.y); drawingContext.lineTo(next.x, next.y); drawingContext.stroke() }
+    onChange(compactSvg())
+  }
+  function end(event: React.PointerEvent<HTMLCanvasElement>) { if (!activeStroke.current) return; event.preventDefault(); activeStroke.current = null; onChange(compactSvg()) }
+  function clear() { strokes.current = []; activeStroke.current = null; context()?.clearRect(0, 0, 560, 180); onChange('') }
+
+  return <div className="signature"><canvas ref={canvas} width="560" height="180" aria-label="Área para firma digital" onPointerDown={start} onPointerMove={move} onPointerUp={end} onPointerCancel={end} /><div className="signature-help"><button type="button" className="text-button" onClick={clear}>Limpiar firma</button></div></div>
+}
+
+function PrivacyConsentModal({ close, confirm }: { close: () => void; confirm: () => Promise<void> }) {
+  const [dataConsent, setDataConsent] = useState(false)
+  const [humanConfirmed, setHumanConfirmed] = useState(false)
+  const [busy, setBusy] = useState(false)
+  async function accept() { setBusy(true); try { await confirm() } finally { setBusy(false) } }
+  return <div className="modal-backdrop privacy-consent-backdrop" onMouseDown={close}><section className="modal privacy-consent-modal" role="dialog" aria-modal="true" aria-labelledby="privacy-title" onMouseDown={event => event.stopPropagation()}><button className="close" onClick={close}>×</button><span className="eyebrow">AUTORIZACIÓN PREVIA, EXPRESA E INFORMADA</span><h2 id="privacy-title">Tratamiento de datos personales</h2><div className="privacy-copy"><p>En cumplimiento de la Ley 1581 de 2012 y sus normas reglamentarias, autorizo de manera libre, previa, expresa e informada a <b>Ayudas La Virginia</b>, como responsable del tratamiento, para recolectar, almacenar, consultar, actualizar, usar, circular de forma restringida y suprimir mis datos personales con las condiciones indicadas en este aviso.</p><section><h3>Datos tratados</h3><p>Nombre, tipo y número de documento, teléfono, barrio, dirección, descripción de la necesidad, categoría, prioridad, ubicación exacta cuando sea compartida, fotografías, evidencias y firmas vinculadas con la solicitud.</p></section><section><h3>Finalidades</h3><ul><li>Registrar, clasificar, priorizar y gestionar la solicitud de ayuda.</li><li>Contactar al solicitante y coordinar la atención.</li><li>Ubicar el lugar de atención y relacionar solicitudes cercanas.</li><li>Verificar evidencias, firmas y cambios de estado.</li><li>Prevenir fraude, automatizaciones y uso indebido.</li><li>Conservar trazabilidad, seguridad y auditoría del servicio.</li><li>Cumplir obligaciones legales y atender requerimientos de autoridades competentes.</li></ul></section><section><h3>Acceso y circulación</h3><p>Los datos privados solo serán consultados por administradores autorizados y proveedores tecnológicos indispensables para operar la plataforma, bajo medidas de seguridad. En la vista pública únicamente se mostrarán datos limitados como código de solicitud, barrio, categoría, descripción, prioridad, estado, fecha y ubicación aproximada; no se publicarán documento, teléfono ni dirección exacta.</p></section><section><h3>Conservación</h3><p>La información se conservará durante el tiempo necesario para gestionar la ayuda, atender obligaciones legales, resolver reclamaciones y mantener la trazabilidad. Después deberá eliminarse o anonimizarse cuando ya no sea necesaria y no exista un deber legal o contractual de conservación.</p></section><section><h3>Derechos del titular</h3><p>Puedo conocer, actualizar y rectificar mis datos; solicitar prueba de esta autorización; ser informado sobre su uso; presentar consultas o reclamos; revocar la autorización o solicitar la supresión cuando proceda; y acudir ante la Superintendencia de Industria y Comercio después de agotar el trámite ante el responsable. Para ejercer estos derechos puedo escribir a <a href="mailto:admin@ayudaslv.com">admin@ayudaslv.com</a>, identificando la solicitud y el derecho que deseo ejercer.</p></section><p className="privacy-note">El suministro de ubicación, fotografías y demás información no pública debe limitarse a lo necesario para gestionar la ayuda. La autorización puede consultarse posteriormente como evidencia del consentimiento otorgado.</p></div><div className="privacy-checks"><label className="consent"><input type="checkbox" required checked={dataConsent} onChange={event => setDataConsent(event.target.checked)} /> <span>He leído este aviso y autorizo expresamente el tratamiento de mis datos personales para las finalidades descritas.</span></label><label className="consent bot-check"><input type="checkbox" required checked={humanConfirmed} onChange={event => setHumanConfirmed(event.target.checked)} /> <span>Confirmo que soy una persona y que la información suministrada es auténtica.</span></label></div><div className="detail-actions"><button className="secondary" disabled={busy} onClick={close}>Volver</button><button className="primary" disabled={!dataConsent || !humanConfirmed || busy} onClick={accept}>{busy ? 'Enviando…' : 'Autorizar y enviar solicitud'}</button></div></section></div>
+}
+
+function RequestForm({ close, create }: { close: () => void; create: (request: HelpRequest, photo?: File) => Promise<void> }) {
+  const [category, setCategory] = useState<Category>('Alimentos')
+  const [location, setLocation] = useState<Location>()
+  const [locationState, setLocationState] = useState('Ubicación aún no compartida')
+  const [pending, setPending] = useState<{ request: HelpRequest; photo?: File }>()
+  function locate() {
+    if (!navigator.geolocation) return setLocationState('Este dispositivo no admite ubicación')
+    setLocationState('Solicitando permiso…')
+    navigator.geolocation.getCurrentPosition(({ coords }) => { setLocation({ latitude: coords.latitude, longitude: coords.longitude }); setLocationState('Ubicación guardada para enviar') }, () => setLocationState('No fue posible obtener la ubicación'), { enableHighAccuracy: true, timeout: 10000 })
+  }
+  function pickLocation(nextLocation: Location) {
+    setLocation(nextLocation)
+    setLocationState(`Ubicación manual guardada: ${nextLocation.latitude.toFixed(6)}, ${nextLocation.longitude.toFixed(6)}`)
+  }
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); const form = new FormData(event.currentTarget)
+    const photo = form.get('photo') as File
+    const description = String(form.get('description')).trim()
+    if (description.length < 10) { alert('La descripción debe tener al menos 10 caracteres.'); return }
+    setPending({ request: { id: `LVR-2026-${String(Date.now()).slice(-6)}`, fullName: String(form.get('fullName')), documentType: String(form.get('documentType')) as DocumentType, documentNumber: String(form.get('documentNumber')), phone: String(form.get('phone')), neighborhood: String(form.get('neighborhood')), address: String(form.get('address')), description, category, status: 'Sin atender', priority: String(form.get('priority')) as Priority, createdAt: new Date().toISOString(), location, requestPhotoName: photo?.name || undefined }, photo: photo?.size ? photo : undefined })
+  }
+  return <div className="modal-backdrop" onMouseDown={close}><section className="modal request-modal" role="dialog" aria-modal="true" onMouseDown={e => e.stopPropagation()}><button className="close" onClick={close}>×</button><span className="eyebrow">SOLICITUD SIN CUENTA</span><h2>Solicitar ayuda</h2><p>Tus datos personales serán privados. En el tablero solo aparecerán el barrio, categoría y estado.</p><form onSubmit={submit}><label className="validated-field">Nombre completo<input name="fullName" autoComplete="name" onInput={formatName} minLength={3} maxLength={120} pattern="[A-Za-zÁÉÍÓÚÜÑáéíóúüñ][A-Za-zÁÉÍÓÚÜÑáéíóúüñ '-]{2,119}" title="Usa solo letras. Cada palabra se formatea automáticamente." required /><small>Solo letras; cada palabra inicia en mayúscula.</small></label><label>Tipo de documento<select name="documentType" required><option>Cédula de ciudadanía</option><option>Cédula de extranjería</option><option>Pasaporte</option><option>Permiso por protección temporal</option></select></label><label className="validated-field">Número de documento<input name="documentNumber" inputMode="numeric" onInput={digitsOnly} minLength={5} maxLength={20} pattern="[0-9]{5,20}" title="Ingresa entre 5 y 20 números, sin puntos ni espacios." required /><small>Entre 5 y 20 números, sin puntos ni espacios.</small></label><label className="validated-field">Teléfono<input name="phone" type="tel" autoComplete="tel" inputMode="numeric" onInput={digitsOnly} minLength={10} maxLength={10} pattern="3[0-9]{9}" title="Debe comenzar por 3 y contener exactamente 10 números." required /><small>10 números y debe comenzar por 3.</small></label><label>Barrio<input name="neighborhood" required /></label><label>Dirección exacta<input name="address" autoComplete="street-address" required /></label><label htmlFor="request-category">Categoría<select id="request-category" name="category" value={category} onChange={e => setCategory(e.target.value as Category)}>{categories.slice(1).map(c => <option key={c}>{c}</option>)}</select></label><label>Prioridad declarada<select name="priority" defaultValue="Media"><option>Crítica</option><option>Alta</option><option>Media</option><option>Baja</option></select></label><label className="wide">Descripción de la ayuda<textarea name="description" rows={4} minLength={10} maxLength={2000} required /><small>Describe la necesidad con al menos 10 caracteres.</small></label>{['Escombros', 'Mudanza y acarreo'].includes(category) && <label className="wide upload-box">Fotografía del trabajo requerido<input name="photo" type="file" accept="image/*" capture="environment" required /><small>En celular podrás abrir la cámara tras conceder permiso.</small></label>}<div className="wide location-box"><button type="button" className="secondary" onClick={locate}>⌖ Usar ubicación del dispositivo</button><span>{locationState}</span></div><div className="wide map-picker-help"><b>También puedes elegirla manualmente</b><span>Toca o haz clic en el punto exacto del mapa. Puedes tocar nuevamente para corregirlo.</span></div><div className="wide form-map"><LeafletMap requests={location ? [{ ...initialRequests[0], location }] : []} onPick={pickLocation} /></div><div className="form-actions wide"><button type="button" className="secondary" onClick={close}>Cancelar</button><button className="primary">Continuar</button></div></form></section>{pending && <PrivacyConsentModal close={() => setPending(undefined)} confirm={() => create(pending.request, pending.photo)} />}</div>
+}
+
+function StatusChangeForm({ request, close, sent }: { request: HelpRequest; close: () => void; sent: () => void }) {
+  const longTask = request.category === 'Escombros' || request.category === 'Mudanza y acarreo'
+  const [target, setTarget] = useState<'En progreso' | 'Completada'>(longTask ? 'En progreso' : 'Completada')
+  const [signature, setSignature] = useState('')
+  const [busy, setBusy] = useState(false)
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); setBusy(true)
+    try {
+      const form = new FormData(event.currentTarget); const evidence = form.get('evidence') as File
+      const evidencePath = evidence?.size ? await uploadEvidence('changes', evidence) : null
+      await insertChange({ help_request_id: request.id, target_status: target === 'En progreso' ? 'in_progress' : 'completed', responsible_name: String(form.get('name')), responsible_phone: String(form.get('phone')), notes: String(form.get('notes') ?? ''), evidence_photo_path: evidencePath, signature_data: signature })
+      sent(); close()
+    } catch (error) { alert(error instanceof Error ? error.message : 'No fue posible enviar el cambio') } finally { setBusy(false) }
+  }
+  return <div className="modal-backdrop" onMouseDown={close}><section className="modal" role="dialog" aria-modal="true" onMouseDown={e => e.stopPropagation()}><button className="close" onClick={close}>×</button><span className="eyebrow">CAMBIO SUJETO A APROBACIÓN</span><h2>{displayRequestCode(request)}</h2><p>Un administrador revisará la evidencia antes de modificar el estado.</p><form onSubmit={submit}><label className="validated-field">Tu nombre<input name="name" onInput={formatName} minLength={3} maxLength={120} pattern="[A-Za-zÁÉÍÓÚÜÑáéíóúüñ][A-Za-zÁÉÍÓÚÜÑáéíóúüñ '-]{2,119}" title="Usa solo letras. Cada palabra se formatea automáticamente." required /><small>Solo letras; cada palabra inicia en mayúscula.</small></label><label className="validated-field">Teléfono<input name="phone" type="tel" inputMode="numeric" onInput={digitsOnly} minLength={10} maxLength={10} pattern="3[0-9]{9}" title="Debe comenzar por 3 y contener exactamente 10 números." required /><small>10 números y debe comenzar por 3.</small></label><label>Estado propuesto<select value={target} onChange={e => setTarget(e.target.value as typeof target)}>{longTask && <option>En progreso</option>}<option>Completada</option></select></label><label className="wide upload-box">Fotografía de evidencia<input name="evidence" type="file" accept="image/*" capture="environment" required /></label><label className="wide">Observaciones<textarea name="notes" rows={3} /></label>{<div className="wide signature-field required-field"><span className="field-label">Firma de quien atiende</span><SignaturePad value={signature} onChange={setSignature} /><small>Firma con el dedo dentro del recuadro.</small></div>}<div className="form-actions wide"><button className="primary" disabled={busy || !signature}>{busy ? 'Enviando…' : 'Enviar para aprobación'}</button></div></form></section></div>
+}
+
+function AdminLogin({ close, success }: { close: () => void; success: (session: Session, profile: { full_name: string; role: 'admin' | 'superadmin' }) => void }) {
+  const [error, setError] = useState(''); const [busy, setBusy] = useState(false)
+  async function submit(event: FormEvent<HTMLFormElement>) { event.preventDefault(); setBusy(true); setError(''); const form = new FormData(event.currentTarget); try { const session = await login(String(form.get('email')), String(form.get('password'))); const profile = await getAdminProfile(session); success(session, profile) } catch (e) { logout(); setError(e instanceof Error ? e.message : 'Acceso rechazado') } finally { setBusy(false) } }
+  return <div className="modal-backdrop" onMouseDown={close}><section className="modal login-modal" role="dialog" aria-modal="true" onMouseDown={e => e.stopPropagation()}><button className="close" onClick={close}>×</button><span className="eyebrow">ÁREA RESTRINGIDA</span><h2>Ingreso administrativo</h2><p>Accede con el correo y contraseña asignados.</p><form onSubmit={submit}><label className="wide">Correo<input name="email" type="email" autoComplete="username" required /></label><label className="wide">Contraseña<PasswordInput autoComplete="current-password" required /></label>{error && <p className="form-error wide">{error}</p>}<button className="primary wide" disabled={busy}>{busy ? 'Ingresando…' : 'Ingresar'}</button></form></section></div>
+}
+
+function EditRequestForm({ request, session, close, saved }: { request: HelpRequest; session: Session; close: () => void; saved: (request: HelpRequest) => void }) {
+  async function submit(event: FormEvent<HTMLFormElement>) { event.preventDefault(); const form = new FormData(event.currentTarget); const next = { ...request, neighborhood: String(form.get('neighborhood')), description: String(form.get('description')), category: String(form.get('category')) as Category, priority: String(form.get('priority')) as Priority, status: String(form.get('status')) as Status }; try { await updateRequest(session, request.id, { neighborhood: next.neighborhood, description: next.description, category: categoryToDb[next.category], verified_priority: priorityToDb[next.priority], status: next.status === 'Sin atender' ? 'pending' : next.status === 'En progreso' ? 'in_progress' : 'completed' }); saved(next); close() } catch (error) { alert(error instanceof Error ? error.message : 'No fue posible actualizar') } }
+  return <div className="modal-backdrop" onMouseDown={close}><section className="modal" role="dialog" aria-modal="true" onMouseDown={e => e.stopPropagation()}><button className="close" onClick={close}>×</button><span className="eyebrow">EDITAR SOLICITUD</span><h2>{request.publicCode ?? request.id}</h2><form onSubmit={submit}><label>Barrio<input name="neighborhood" defaultValue={request.neighborhood} required /></label><label>Categoría<select name="category" defaultValue={request.category}>{categories.slice(1).map(c => <option key={c}>{c}</option>)}</select></label><label>Prioridad<select name="priority" defaultValue={request.priority}><option>Crítica</option><option>Alta</option><option>Media</option><option>Baja</option></select></label><label>Estado<select name="status" defaultValue={request.status}><option>Sin atender</option><option>En progreso</option><option>Completada</option></select></label><label className="wide">Descripción<textarea name="description" defaultValue={request.description} rows={5} required /></label><div className="form-actions wide"><button className="primary">Guardar cambios</button></div></form></section></div>
+}
+
+function EditAdminForm({ admin, session, close, saved }: { admin: AdminUser; session: Session; close: () => void; saved: (admin: AdminUser) => void }) {
+  async function submit(event: FormEvent<HTMLFormElement>) { event.preventDefault(); const form = new FormData(event.currentTarget); const next = { ...admin, name: String(form.get('name')), email: String(form.get('email')), role: String(form.get('role')) as 'admin' | 'superadmin', active: form.get('active') === 'on' }; try { await updateAdmin(session, { userId: admin.id, email: next.email, fullName: next.name, role: next.role, active: next.active, password: String(form.get('password')) || undefined }); saved(next); close() } catch (error) { alert(error instanceof Error ? error.message : 'No fue posible actualizar el usuario') } }
+  return <div className="modal-backdrop" onMouseDown={close}><section className="modal login-modal" role="dialog" aria-modal="true" onMouseDown={e => e.stopPropagation()}><button className="close" onClick={close}>×</button><span className="eyebrow">EDITAR USUARIO</span><h2>{admin.name}</h2><form onSubmit={submit}><label className="wide validated-field">Nombre<input name="name" defaultValue={admin.name} onInput={formatName} minLength={3} maxLength={120} pattern="[A-Za-zÁÉÍÓÚÜÑáéíóúüñ][A-Za-zÁÉÍÓÚÜÑáéíóúüñ '-]{2,119}" title="Usa solo letras. Cada palabra se formatea automáticamente." required /><small>Solo letras; cada palabra inicia en mayúscula.</small></label><label className="wide">Correo<input name="email" type="email" defaultValue={admin.email} required /></label><label className="wide">Rol<select name="role" defaultValue={admin.role ?? 'admin'}><option value="admin">Administrador</option><option value="superadmin">Superadministrador</option></select></label><label className="wide">Nueva contraseña <small>Déjala vacía para conservarla</small><PasswordInput minLength={10} /></label><label className="consent wide"><input name="active" type="checkbox" defaultChecked={admin.active} /> Usuario activo</label><button className="primary wide">Guardar usuario</button></form></section></div>
+}
+
+function ApprovalDetail({ change, session, close, review }: { change: ChangeRequest; session: Session; close: () => void; review: (change: ChangeRequest, state: 'Aprobado' | 'Rechazado') => Promise<void> }) {
+  const [request, setRequest] = useState<HelpRequest>()
+  const [evidenceUrl, setEvidenceUrl] = useState('')
+  const [requestPhotoUrl, setRequestPhotoUrl] = useState('')
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
+  useEffect(() => {
+    let active = true
+    setError('')
+    Promise.all([getPrivateRequest(session, change.requestId), change.evidencePhotoName ? getEvidenceUrl(session, change.evidencePhotoName) : Promise.resolve('')])
+      .then(async ([rows, evidence]) => {
+        if (!active) return
+        if (!rows[0]) { setRequest(undefined); setError('No fue posible encontrar la solicitud relacionada.'); return }
+        const privateRequest = mapPrivate(rows[0])
+        setRequest(privateRequest); setEvidenceUrl(evidence); setError('')
+        if (privateRequest.requestPhotoName) {
+          try { setRequestPhotoUrl(await getEvidenceUrl(session, privateRequest.requestPhotoName)) } catch { setRequestPhotoUrl('') }
+        }
+      }).catch(reason => active && setError(reason instanceof Error ? reason.message : 'No fue posible cargar los detalles.'))
+    return () => { active = false }
+  }, [change, session])
+  async function decide(state: 'Aprobado' | 'Rechazado') { setBusy(true); try { await review(change, state); close() } finally { setBusy(false) } }
+  const signatureUrl = change.signature?.startsWith('<svg') ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(change.signature)}` : ''
+  return <div className="modal-backdrop" onMouseDown={close}><section className="modal approval-detail" role="dialog" aria-modal="true" onMouseDown={event => event.stopPropagation()}><button className="close" onClick={close}>×</button><span className="eyebrow">DETALLE DE APROBACIÓN</span><h2>{request?.publicCode ?? change.requestDetails?.publicCode ?? 'Detalle de solicitud'}</h2>{error && !request && <p className="form-error">{error}</p>}{!request && !error && <p>Cargando información…</p>}{request && <><div className="detail-status"><span className={`request-status status-${request.status.toLowerCase().replace(' ', '-')}`}>{request.status}</span><b>→ {change.requestedStatus}</b><span>{change.state}</span></div><section className="detail-grid"><div><small>Solicitante</small><b>{request.fullName}</b></div><div><small>Documento</small><b>{request.documentType} · {request.documentNumber}</b></div><div><small>Teléfono del solicitante</small><b>{request.phone}</b></div><div><small>Categoría y prioridad</small><b>{request.category} · {request.priority}</b></div><div><small>Barrio</small><b>{request.neighborhood}</b></div><div><small>Dirección</small><b>{request.address}</b></div><div className="wide"><small>Descripción de la solicitud</small><p>{request.description}</p></div><div><small>Persona responsable</small><b>{change.requestedBy}</b></div><div><small>Teléfono responsable</small><b>{change.responsiblePhone || 'No registrado'}</b></div><div className="wide"><small>Observaciones del cambio</small><p>{change.notes || 'Sin observaciones'}</p></div></section><section className="detail-media">{requestPhotoUrl && <figure><figcaption>Fotografía de la solicitud</figcaption><img src={requestPhotoUrl} alt="Fotografía original de la solicitud" /></figure>}{evidenceUrl && <figure><figcaption>Fotografía de evidencia</figcaption><img src={evidenceUrl} alt="Evidencia presentada para el cambio" /></figure>}{signatureUrl && <figure className="signature-preview"><figcaption>Firma de quien atendió</figcaption><img src={signatureUrl} alt="Firma digital asociada al cambio" /></figure>}</section>{change.state === 'Pendiente' && <div className="detail-actions"><button className="secondary" disabled={busy} onClick={() => decide('Rechazado')}>Rechazar</button><button className="primary" disabled={busy} onClick={() => decide('Aprobado')}>Aprobar cambio</button></div>}</>}</section></div>
+}
+
+function AdminPanel({ requests, admins, changes, setAdmins, setChanges, setRequests, session, role, onNewRequest }: { requests: HelpRequest[]; admins: AdminUser[]; changes: ChangeRequest[]; setAdmins: React.Dispatch<React.SetStateAction<AdminUser[]>>; setChanges: React.Dispatch<React.SetStateAction<ChangeRequest[]>>; setRequests: React.Dispatch<React.SetStateAction<HelpRequest[]>>; session: Session; role: 'admin' | 'superadmin'; onNewRequest: () => void }) {
+  const [tab, setTab] = useState<'solicitudes' | 'aprobaciones' | 'usuarios'>('aprobaciones'); const [changeFor, setChangeFor] = useState<HelpRequest>(); const [selectedChange, setSelectedChange] = useState<ChangeRequest>(); const [signature, setSignature] = useState(''); const [editingRequest, setEditingRequest] = useState<HelpRequest>(); const [editingAdmin, setEditingAdmin] = useState<AdminUser>()
+  useEffect(() => { getChanges(session).then(rows => setChanges(rows.map(row => ({ id: String(row.id), requestId: String(row.help_request_id), requestedStatus: String(row.target_status) === 'in_progress' ? 'En progreso' : 'Completada', requestedBy: String(row.responsible_name), responsiblePhone: String(row.responsible_phone ?? ''), notes: String(row.notes ?? ''), evidencePhotoName: String(row.evidence_photo_path ?? ''), signature: String(row.signature_data ?? ''), requestDetails: row.help_requests && typeof row.help_requests === 'object' ? mapPrivate(row.help_requests as Record<string, unknown>) : undefined, createdAt: String(row.created_at), state: String(row.state) === 'approved' ? 'Aprobado' : String(row.state) === 'rejected' ? 'Rechazado' : 'Pendiente' })))).catch(() => undefined); if (role === 'superadmin') listAdmins(session).then(rows => setAdmins(rows.map(a => ({ id: a.id, name: a.name, email: a.email, active: a.active, role: a.role })))).catch(() => undefined) }, [session, role, setAdmins, setChanges])
+  async function addAdmin(event: FormEvent<HTMLFormElement>) { event.preventDefault(); const form = new FormData(event.currentTarget); try { await createAdmin(session, { email: String(form.get('email')), password: String(form.get('password')), fullName: String(form.get('name')), role: String(form.get('role')) as 'admin' | 'superadmin' }); const rows = await listAdmins(session); setAdmins(rows.map(a => ({ id: a.id, name: a.name, email: a.email, active: a.active, role: a.role }))); event.currentTarget.reset() } catch (error) { alert(error instanceof Error ? error.message : 'No fue posible crear el administrador') } }
+  async function propose(event: FormEvent<HTMLFormElement>) { event.preventDefault(); if (!changeFor || !signature) return; const form = new FormData(event.currentTarget); const photo = form.get('evidence') as File; try { const path = await uploadEvidence('changes', photo, session); const target = String(form.get('status')) as 'En progreso' | 'Completada'; await insertChange({ help_request_id: changeFor.id, target_status: target === 'En progreso' ? 'in_progress' : 'completed', responsible_name: String(form.get('responsible')), responsible_phone: String(form.get('phone')), evidence_photo_path: path, signature_data: signature }); setChanges(c => [{ id: crypto.randomUUID(), requestId: changeFor.id, requestedStatus: target, requestedBy: String(form.get('responsible')), evidencePhotoName: path, signature, createdAt: new Date().toISOString(), state: 'Pendiente' }, ...c]); setChangeFor(undefined) } catch (error) { alert(error instanceof Error ? error.message : 'No fue posible crear la aprobación') } }
+  async function review(change: ChangeRequest, state: 'Aprobado' | 'Rechazado') { try { await reviewChange(session, change.id, state === 'Aprobado', state === 'Rechazado' ? 'Rechazado por administración' : undefined); setChanges(list => list.map(c => c.id === change.id ? { ...c, state } : c)); if (state === 'Aprobado') setRequests(list => list.map(r => r.id === change.requestId ? { ...r, status: change.requestedStatus, evidencePhotoName: change.evidencePhotoName, signature: change.signature } : r)) } catch (error) { alert(error instanceof Error ? error.message : 'No fue posible revisar el cambio') } }
+  async function removeRequest(request: HelpRequest) { if (!confirm(`¿Eliminar definitivamente ${request.id}?`)) return; try { await deleteRequest(session, request.id); setRequests(list => list.filter(r => r.id !== request.id)) } catch (error) { alert(error instanceof Error ? error.message : 'No fue posible eliminar') } }
+  async function removeChange(change: ChangeRequest) { if (!confirm('¿Eliminar esta aprobación?')) return; try { await deleteChange(session, change.id); setChanges(list => list.filter(c => c.id !== change.id)) } catch (error) { alert(error instanceof Error ? error.message : 'No fue posible eliminar la aprobación') } }
+  async function removeAdmin(admin: AdminUser) { if (!confirm(`¿Eliminar el usuario ${admin.email}?`)) return; try { await deleteAdmin(session, admin.id); setAdmins(list => list.filter(a => a.id !== admin.id)) } catch (error) { alert(error instanceof Error ? error.message : 'No fue posible eliminar el usuario') } }
+  return <><div className="section-heading"><div><span className="eyebrow">ÁREA RESTRINGIDA · {role}</span><h2>Administración</h2></div></div><div className="admin-tabs">{role === 'superadmin' && <button className={tab === 'solicitudes' ? 'selected' : ''} onClick={() => setTab('solicitudes')}>Solicitudes</button>}<button className={tab === 'aprobaciones' ? 'selected' : ''} onClick={() => setTab('aprobaciones')}>Aprobaciones ({changes.filter(c => c.state === 'Pendiente').length})</button>{role === 'superadmin' && <button className={tab === 'usuarios' ? 'selected' : ''} onClick={() => setTab('usuarios')}>Usuarios admin</button>}</div>
+    {tab === 'solicitudes' && role === 'superadmin' && <><div className="crud-toolbar"><button className="primary" onClick={onNewRequest}>＋ Crear solicitud</button></div><div className="admin-list">{requests.map(r => <article key={r.id}><div><b>{r.publicCode ?? r.id} · {r.category}</b><span>{r.neighborhood} · {r.status}</span></div><div><button className="secondary" onClick={() => setEditingRequest(r)}>Editar</button> <button className="primary" disabled={r.status === 'Completada'} onClick={() => setChangeFor(r)}>Crear aprobación</button> <button className="danger" onClick={() => removeRequest(r)}>Eliminar</button></div></article>)}</div></>}
+    {tab === 'aprobaciones' && <div className="admin-list">{changes.map(c => <article key={c.id}><div><b>{c.requestDetails?.publicCode ?? c.requestId} → {c.requestedStatus}</b><span>{c.requestedBy} · {new Date(c.createdAt).toLocaleString('es-CO')} · {c.state}</span></div><div><button className="secondary" onClick={() => setSelectedChange(c)}>Ver detalles</button> {c.state === 'Pendiente' && <><button className="secondary" onClick={() => review(c, 'Rechazado')}>Rechazar</button> <button className="primary" onClick={() => review(c, 'Aprobado')}>Aprobar</button></>}{role === 'superadmin' && <button className="danger" onClick={() => removeChange(c)}>Eliminar</button>}</div></article>)}</div>}
+    {tab === 'usuarios' && role === 'superadmin' && <><form className="inline-form admin-create" onSubmit={addAdmin}><input name="name" placeholder="Nombre *" onInput={formatName} minLength={3} maxLength={120} pattern="[A-Za-zÁÉÍÓÚÜÑáéíóúüñ][A-Za-zÁÉÍÓÚÜÑáéíóúüñ '-]{2,119}" title="Usa solo letras. Cada palabra se formatea automáticamente." required /><input name="email" type="email" placeholder="Correo *" required /><PasswordInput minLength={10} placeholder="Contraseña temporal *" required /><select name="role"><option value="admin">Administrador *</option><option value="superadmin">Superadministrador</option></select><button className="primary">Crear usuario</button></form><div className="admin-list">{admins.map(a => <article key={a.id}><div><b>{a.name}</b><span>{a.email} · {a.role} · {a.active ? 'Activo' : 'Inactivo'}</span></div><div><button className="secondary" onClick={() => setEditingAdmin(a)}>Editar</button> <button className="danger" onClick={() => removeAdmin(a)}>Eliminar</button></div></article>)}</div></>}
+    {changeFor && <div className="modal-backdrop" onMouseDown={() => setChangeFor(undefined)}><section className="modal" onMouseDown={e => e.stopPropagation()}><button className="close" onClick={() => setChangeFor(undefined)}>×</button><span className="eyebrow">CREAR APROBACIÓN</span><h2>{changeFor.publicCode ?? changeFor.id}</h2><form onSubmit={propose}><label>Nuevo estado<select name="status"><option>En progreso</option><option>Completada</option></select></label><label className="validated-field">Responsable<input name="responsible" onInput={formatName} minLength={3} maxLength={120} pattern="[A-Za-zÁÉÍÓÚÜÑáéíóúüñ][A-Za-zÁÉÍÓÚÜÑáéíóúüñ '-]{2,119}" title="Usa solo letras. Cada palabra se formatea automáticamente." required /><small>Solo letras; cada palabra inicia en mayúscula.</small></label><label className="validated-field">Teléfono<input name="phone" type="tel" inputMode="numeric" onInput={digitsOnly} minLength={10} maxLength={10} pattern="3[0-9]{9}" title="Debe comenzar por 3 y contener exactamente 10 números." required /><small>10 números y debe comenzar por 3.</small></label><label className="wide upload-box">Fotografía de evidencia<input name="evidence" type="file" accept="image/*" capture="environment" required /></label><div className="wide signature-field required-field"><span className="field-label">Firma digital</span><SignaturePad value={signature} onChange={setSignature} />{!signature && <small>La firma es obligatoria.</small>}</div><div className="form-actions wide"><button className="primary" disabled={!signature}>Crear aprobación</button></div></form></section></div>}
+    {editingRequest && <EditRequestForm request={editingRequest} session={session} close={() => setEditingRequest(undefined)} saved={next => setRequests(list => list.map(r => r.id === next.id ? next : r))} />}
+    {editingAdmin && <EditAdminForm admin={editingAdmin} session={session} close={() => setEditingAdmin(undefined)} saved={next => setAdmins(list => list.map(a => a.id === next.id ? next : a))} />}
+    {selectedChange && <ApprovalDetail change={selectedChange} session={session} close={() => setSelectedChange(undefined)} review={review} />}
+  </>
+}
+
+export default function App() {
+  const [view, setView] = useState<View>('dashboard'); const [requests, setRequests] = useState<HelpRequest[]>([]); const [admins, setAdmins] = useState(initialAdmins); const [changes, setChanges] = useState(initialChanges); const [category, setCategory] = useState<'Todas' | Category>('Todas'); const [status, setStatus] = useState<'Todos' | Status>('Todos'); const [sort, setSort] = useState<Sort>('priority'); const [page, setPage] = useState(1); const [showForm, setShowForm] = useState(false); const [changeFor, setChangeFor] = useState<HelpRequest>(); const [showLogin, setShowLogin] = useState(false); const [mobileMenu, setMobileMenu] = useState(false); const [session, setSession] = useState<Session | null>(savedSession()); const [adminProfile, setAdminProfile] = useState<{ full_name: string; role: 'admin' | 'superadmin' } | null>(null); const [notice, setNotice] = useState('')
+  const ordered = useMemo(() => requests.filter(r => (category === 'Todas' || r.category === category) && (status === 'Todos' || r.status === status)).sort((a, b) => { if (a.status === 'Completada' && b.status !== 'Completada') return 1; if (b.status === 'Completada' && a.status !== 'Completada') return -1; if (sort === 'priority') return priorityWeight[a.priority] - priorityWeight[b.priority] || +new Date(b.createdAt) - +new Date(a.createdAt); return sort === 'oldest' ? +new Date(a.createdAt) - +new Date(b.createdAt) : +new Date(b.createdAt) - +new Date(a.createdAt) }), [requests, category, status, sort])
+  const pages = Math.max(1, Math.ceil(ordered.length / PAGE_SIZE)); const visible = ordered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+  useEffect(() => setPage(1), [category, status, sort])
+  useEffect(() => { if (!supabaseConfigured) { setRequests(initialRequests); return } getPublicRequests().then(rows => setRequests(rows.map(mapPublic))).catch(() => setNotice('No fue posible cargar Supabase.')) }, [])
+  useEffect(() => { if (!session) return; getAdminProfile(session).then(setAdminProfile).catch(() => { logout(); setSession(null) }) }, [session])
+  async function refresh() { const rows = await getPublicRequests(); setRequests(rows.map(mapPublic)) }
+  async function create(request: HelpRequest, photo?: File) { try { const photoPath = photo ? await uploadEvidence('requests', photo) : null; const consentAt = new Date().toISOString(); await insertRequest({ full_name: request.fullName, document_type: request.documentType, document_number: request.documentNumber, phone: request.phone, neighborhood: request.neighborhood, exact_address: request.address, description: request.description.trim(), category: categoryToDb[request.category], declared_priority: priorityToDb[request.priority], exact_latitude: request.location?.latitude ?? null, exact_longitude: request.location?.longitude ?? null, request_photo_path: photoPath, privacy_consent_at: consentAt, privacy_notice_version: '2026-08-13-v1', human_confirmation_at: consentAt }); await refresh(); setShowForm(false); setNotice('Solicitud enviada correctamente.') } catch (error) { alert(requestSubmissionError(error)) } }
+  function navigate(next: View) { setView(next); setMobileMenu(false) }
+  function openAdmin() { setMobileMenu(false); if (session && adminProfile) setView('admin'); else setShowLogin(true) }
+  function closeSession() { logout(); setSession(null); setAdminProfile(null); setView('dashboard'); setMobileMenu(false) }
+  return <div className="app-shell">{mobileMenu && <button className="sidebar-overlay" aria-label="Cerrar menú" onClick={() => setMobileMenu(false)} />}<aside id="main-sidebar" className={`sidebar ${mobileMenu ? 'mobile-open' : ''}`}><button className="sidebar-close" aria-label="Cerrar menú" onClick={() => setMobileMenu(false)}>×</button><a className="logo" href="#dashboard" onClick={() => navigate('dashboard')}><span>♥</span><b>Ayudas<br />La Virginia</b></a><nav><button className={view === 'dashboard' ? 'active' : ''} onClick={() => navigate('dashboard')}><span>▤</span>Solicitudes</button><button className={view === 'mapa' ? 'active' : ''} onClick={() => navigate('mapa')}><span>⌖</span>Mapa</button></nav><div className="sidebar-bottom">{session && adminProfile ? <><button className={view === 'admin' ? 'active' : ''} onClick={() => navigate('admin')}><span>⚙</span>Administración</button><button onClick={closeSession}><span>↪</span>Cerrar sesión</button><small>{adminProfile.full_name} · {adminProfile.role}</small></> : <button onClick={openAdmin}><span>⚙</span>Acceso administrativo</button>}</div></aside><main><Header menuOpen={mobileMenu} toggleMenu={() => setMobileMenu(open => !open)} />{notice && <div className="notice">{notice}</div>}
+    {view === 'dashboard' && <><section className="emergency-banner"><div><span className="warning">!</span><div><h2>¿Estás en peligro inmediato?</h2><p>Esta plataforma coordina ayudas; no reemplaza a los organismos de emergencia.</p></div></div><a href="tel:123">Llamar al 123</a></section><div className="section-heading"><div><span className="eyebrow">SOLICITUDES PÚBLICAS</span><h2>Ayudas solicitadas</h2><p className="muted">Datos personales y direcciones exactas protegidos.</p></div></div><section className="stats"><article><span className="stat-icon orange">○</span><div><strong>{requests.filter(r => r.status === 'Sin atender').length}</strong><p>Sin atender</p></div></article><article><span className="stat-icon blue">↻</span><div><strong>{requests.filter(r => r.status === 'En progreso').length}</strong><p>En progreso</p></div></article><article><span className="stat-icon green">✓</span><div><strong>{requests.filter(r => r.status === 'Completada').length}</strong><p>Completadas</p></div></article></section><section className="dashboard-filters"><label>Categoría<select value={category} onChange={e => setCategory(e.target.value as typeof category)}>{categories.map(c => <option key={c}>{c}</option>)}</select></label><label>Estado<select value={status} onChange={e => setStatus(e.target.value as typeof status)}>{statuses.map(s => <option key={s}>{s}</option>)}</select></label><label>Ordenar por<select value={sort} onChange={e => setSort(e.target.value as Sort)}><option value="priority">Prioridad</option><option value="recent">Más recientes</option><option value="oldest">Más antiguas</option></select></label></section><div className="result-count">{ordered.length} solicitudes · Página {page} de {pages} · 25 por página</div><section className="ticket-grid">{visible.map(r => <RequestCard key={r.id} request={r} onChange={setChangeFor} />)}</section><div className="pagination"><button disabled={page === 1} onClick={() => setPage(p => p - 1)}>← Anterior</button><button disabled={page === pages} onClick={() => setPage(p => p + 1)}>Siguiente →</button></div></>}
+    {view === 'mapa' && <><div className="section-heading"><div><span className="eyebrow">UBICACIONES APROXIMADAS</span><h2>Mapa de solicitudes</h2></div></div><LeafletMap requests={requests} /></>}
+    {view === 'admin' && session && adminProfile && <AdminPanel requests={requests} admins={admins} changes={changes} setAdmins={setAdmins} setChanges={setChanges} setRequests={setRequests} session={session} role={adminProfile.role} onNewRequest={() => setShowForm(true)} />}
+  </main>{view !== 'admin' && <button className="floating-help" onClick={() => setShowForm(true)}>＋ <span>Solicitar ayuda</span></button>}{showForm && <RequestForm close={() => setShowForm(false)} create={create} />}{changeFor && <StatusChangeForm request={changeFor} close={() => setChangeFor(undefined)} sent={() => setNotice('Cambio enviado para revisión administrativa.')} />}{showLogin && <AdminLogin close={() => setShowLogin(false)} success={(nextSession, profile) => { setSession(nextSession); setAdminProfile(profile); setShowLogin(false); setView('admin') }} />}</div>
+}

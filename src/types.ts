@@ -1,6 +1,6 @@
 export type Status = 'Sin atender' | 'En progreso' | 'Completada'
 export type Priority = 'Crítica' | 'Alta' | 'Media' | 'Baja'
-export type Category = 'Alimentos' | 'Escombros' | 'Mudanza y acarreo' | 'Implementos de aseo' | 'Juguetes' | 'Salud' | 'Alojamiento' | 'Otros'
+export type Category = 'Alimentos' | 'Escombros' | 'Mudanza y acarreo' | 'Implementos de aseo' | 'Juguetes' | 'Salud' | 'Alojamiento' | 'Ropa' | 'Reconstrucción' | 'Otros'
 export type DocumentType = 'Cédula de ciudadanía' | 'Cédula de extranjería' | 'Pasaporte' | 'Permiso por protección temporal'
 
 export interface Location { latitude: number; longitude: number }

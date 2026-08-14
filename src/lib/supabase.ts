@@ -39,6 +39,19 @@ export async function getPrivateRequest(session: Session, id: string) {
   return row ? [row] : []
 }
 export async function getChanges(session: Session) { return request<Array<Record<string, unknown>>>('/rest/v1/status_change_requests?select=*,help_requests(*)&order=created_at.desc', {}, session) }
+export async function getCollectionCenters(session?: Session) { return request<Array<Record<string, unknown>>>('/rest/v1/collection_centers?select=*&order=name.asc', {}, session) }
+
+export async function createCollectionCenter(session: Session, payload: Record<string, unknown>) {
+  return request('/rest/v1/collection_centers', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(payload) }, session)
+}
+
+export async function updateCollectionCenter(session: Session, id: string, payload: Record<string, unknown>) {
+  return request(`/rest/v1/collection_centers?id=eq.${encodeURIComponent(id)}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ ...payload, updated_at: new Date().toISOString() }) }, session)
+}
+
+export async function deleteCollectionCenter(session: Session, id: string) {
+  return request(`/rest/v1/collection_centers?id=eq.${encodeURIComponent(id)}`, { method: 'DELETE', headers: { Prefer: 'return=minimal' } }, session)
+}
 
 export async function getEvidenceUrl(session: Session, path: string) {
   if (!url || !path) return ''

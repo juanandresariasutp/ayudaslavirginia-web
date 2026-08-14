@@ -5,6 +5,18 @@ export type DocumentType = 'Cédula de ciudadanía' | 'Cédula de extranjería' 
 
 export interface Location { latitude: number; longitude: number }
 
+export interface CollectionCenter {
+  id: string
+  name: string
+  address: string
+  description: string
+  phone?: string
+  openingHours: string
+  acceptedItems: string
+  location: Location
+  active: boolean
+}
+
 export interface HelpRequest {
   id: string
   publicCode?: string

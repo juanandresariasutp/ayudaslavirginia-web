@@ -72,6 +72,14 @@ function RequestCard({ request, onChange }: { request: HelpRequest; onChange: (r
   return <article className="ticket-card"><div className="ticket-top"><span className={`tag urgency-${request.priority.toLowerCase().replace('í', 'i')}`}>{request.priority}</span><span className="ticket-id">{displayRequestCode(request)}</span></div><div className="card-category">{request.category}</div><h3>{request.neighborhood}</h3><p>{request.description}</p><div className="ticket-bottom"><time dateTime={request.createdAt}>{requestDateTime(request.createdAt)}</time><span className={`request-status status-${request.status.toLowerCase().replace(' ', '-')}`}>{request.status}</span></div>{request.status !== 'Completada' && <button className="card-action" onClick={() => onChange(request)}>Reportar avance</button>}</article>
 }
 
+function escapeMapText(value: string) {
+  return value.replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]!)
+}
+
+function priorityClass(priority: Priority) {
+  return priority.toLowerCase().replace('í', 'i')
+}
+
 function LeafletMap({ requests, onPick }: { requests: HelpRequest[]; onPick?: (location: Location) => void }) {
   const element = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -80,8 +88,15 @@ function LeafletMap({ requests, onPick }: { requests: HelpRequest[]; onPick?: (l
     const map = window.L.map(element.current).setView([center.latitude, center.longitude], 15)
     window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap contributors', maxZoom: 19 }).addTo(map)
     if (onPick) map.on('click', event => onPick({ latitude: event.latlng.lat, longitude: event.latlng.lng }))
-    const grouped = new Map<string, HelpRequest[]>(); requests.filter(r => r.location).forEach(request => { const key = `${request.location!.latitude.toFixed(3)},${request.location!.longitude.toFixed(3)}`; grouped.set(key, [...(grouped.get(key) ?? []), request]) })
-    grouped.forEach(group => { const location = group[0].location!; const items = group.map(request => `<li><strong>${request.category}</strong> · ${request.status}<br>${request.description}</li>`).join(''); window.L!.marker([location.latitude, location.longitude]).addTo(map).bindPopup(`<strong>${group[0].neighborhood}</strong><br>${group.length} solicitud(es)<ul class="map-popup-list">${items}</ul>`) })
+    const mapRequests = onPick ? requests : requests.filter(request => request.status !== 'Completada')
+    const grouped = new Map<string, HelpRequest[]>(); mapRequests.filter(r => r.location).forEach(request => { const key = `${request.location!.latitude.toFixed(3)},${request.location!.longitude.toFixed(3)}`; grouped.set(key, [...(grouped.get(key) ?? []), request]) })
+    grouped.forEach(unsortedGroup => {
+      const group = [...unsortedGroup].sort((a, b) => priorityWeight[a.priority] - priorityWeight[b.priority] || +new Date(b.createdAt) - +new Date(a.createdAt))
+      const location = group[0].location!
+      const items = group.map(request => `<li><div class="map-popup-request-heading"><strong>${escapeMapText(request.category)}</strong><span class="map-priority map-priority-${priorityClass(request.priority)}">${escapeMapText(request.priority)}</span></div><span class="map-popup-status">${escapeMapText(request.status)}</span><p>${escapeMapText(request.description)}</p></li>`).join('')
+      const directions = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${location.latitude},${location.longitude}`)}`
+      window.L!.marker([location.latitude, location.longitude]).addTo(map).bindPopup(`<strong>${escapeMapText(group[0].neighborhood)}</strong><br>${group.length} solicitud(es)<ul class="map-popup-list">${items}</ul><a class="map-directions" href="${directions}" target="_blank" rel="noopener noreferrer">Cómo llegar</a>`)
+    })
     return () => map.remove()
   }, [requests, onPick])
   return <div ref={element} className={`leaflet-map ${onPick ? 'location-picker-map' : ''}`}><div className="map-fallback">Cargando mapa Leaflet…</div></div>

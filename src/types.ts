@@ -57,4 +57,6 @@ export interface ChangeRequest {
   requestDetails?: HelpRequest
   createdAt: string
   state: 'Pendiente' | 'Aprobado' | 'Rechazado'
+  reviewedByName?: string
+  reviewedAt?: string
 }

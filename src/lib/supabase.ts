@@ -38,7 +38,7 @@ export async function getPrivateRequest(session: Session, id: string) {
   const row = await request<Record<string, unknown> | null>('/rest/v1/rpc/get_private_help_request', { method: 'POST', body: JSON.stringify({ request_id: id }) }, session)
   return row ? [row] : []
 }
-export async function getChanges(session: Session) { return request<Array<Record<string, unknown>>>('/rest/v1/status_change_requests?select=*,help_requests(*)&order=created_at.desc', {}, session) }
+export async function getChanges(session: Session) { return request<Array<Record<string, unknown>>>('/rest/v1/status_change_requests?select=*,help_requests(*),reviewer:admin_profiles!status_change_requests_reviewed_by_fkey(full_name)&order=created_at.desc', {}, session) }
 export async function getCollectionCenters(session?: Session) { return request<Array<Record<string, unknown>>>('/rest/v1/collection_centers?select=*&order=name.asc', {}, session) }
 export async function getCompletedRequestMedia() { return request<Array<{ request_id: string; request_photo_path: string | null; solution_photo_path: string | null }>>('/rest/v1/completed_request_media?select=request_id,request_photo_path,solution_photo_path') }
 

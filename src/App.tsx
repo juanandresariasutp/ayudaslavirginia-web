@@ -17,6 +17,8 @@ const dbToCategory: Record<string, Category> = Object.fromEntries(Object.entries
 const priorityToDb: Record<Priority, string> = { Crítica: 'critical', Alta: 'high', Media: 'medium', Baja: 'low' }
 const dbToPriority: Record<string, Priority> = { critical: 'Crítica', high: 'Alta', medium: 'Media', low: 'Baja' }
 const dbToStatus: Record<string, Status> = { pending: 'Sin atender', in_progress: 'En progreso', completed: 'Completada' }
+const MAP_DEFAULT_ZOOM = 15
+const MAP_SELECTED_ZOOM = 18
 
 function mapPublic(row: Record<string, unknown>): HelpRequest {
   return { id: String(row.id), publicCode: String(row.public_code ?? row.id), fullName: 'Dato protegido', documentType: 'Cédula de ciudadanía', documentNumber: 'PROTEGIDO', phone: row.contact_phone ? String(row.contact_phone) : 'PROTEGIDO', neighborhood: String(row.neighborhood), address: row.contact_address ? String(row.contact_address) : 'Dirección protegida', description: String(row.description), category: dbToCategory[String(row.category)] ?? 'Otros', status: dbToStatus[String(row.status)] ?? 'Sin atender', priority: dbToPriority[String(row.priority)] ?? 'Media', createdAt: String(row.created_at), location: row.public_latitude == null ? undefined : { latitude: Number(row.public_latitude), longitude: Number(row.public_longitude) } }
@@ -36,10 +38,10 @@ function mapChange(row: Record<string, unknown>): ChangeRequest {
 }
 
 declare global {
-  interface Window { L?: { map: (element: HTMLElement) => LeafletMap; tileLayer: (url: string, options: object) => { addTo: (map: LeafletMap) => void }; marker: (point: [number, number]) => LeafletMarker } }
+  interface Window { L?: { map: (element: HTMLElement) => LeafletMap; tileLayer: (url: string, options: object) => { addTo: (map: LeafletMap) => void }; marker: (point: [number, number], options?: { bubblingMouseEvents?: boolean }) => LeafletMarker } }
 }
-interface LeafletMap { setView: (point: [number, number], zoom: number) => LeafletMap; on: (event: string, handler: (event: { latlng: { lat: number; lng: number } }) => void) => LeafletMap; remove: () => void }
-interface LeafletMarker { addTo: (map: LeafletMap) => LeafletMarker; bindPopup: (content: string) => LeafletMarker }
+interface LeafletMap { setView: (point: [number, number], zoom: number) => LeafletMap; panBy: (offset: [number, number], options?: { animate?: boolean }) => LeafletMap; on: (event: string, handler: (event: { latlng: { lat: number; lng: number } }) => void) => LeafletMap; remove: () => void }
+interface LeafletMarker { addTo: (map: LeafletMap) => LeafletMarker; bindPopup: (content: string) => LeafletMarker; on: (event: string, handler: () => void) => LeafletMarker }
 
 function LogoMark({ className = '' }: { className?: string }) {
   return <span className={`brand-mark ${className}`.trim()} aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M12 21.35 10.55 20C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09A6.02 6.02 0 0 1 16.5 3C19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.51L12 21.35Z" /></svg></span>
@@ -104,25 +106,56 @@ function priorityClass(priority: Priority) {
   return priority.toLowerCase().replace('í', 'i')
 }
 
-function LeafletMap({ requests, onPick }: { requests: HelpRequest[]; onPick?: (location: Location) => void }) {
+function focusMarkerNearBottom(map: LeafletMap, mapElement: HTMLElement, location: Location) {
+  const verticalOffset = Math.min(150, Math.max(90, Math.round(mapElement.clientHeight * 0.22)))
+  map.setView([location.latitude, location.longitude], MAP_SELECTED_ZOOM)
+  map.panBy([0, -verticalOffset], { animate: false })
+}
+
+function LeafletMap({ requests, onPick, onReport }: { requests: HelpRequest[]; onPick?: (location: Location) => void; onReport?: (request: HelpRequest) => void }) {
   const element = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (!element.current || !window.L) return
-    const center = requests.find(r => r.location)?.location ?? { latitude: 4.895, longitude: -75.883 }
-    const map = window.L.map(element.current).setView([center.latitude, center.longitude], 15)
+    const mapElement = element.current
+    const fallbackCenter = { latitude: 4.895, longitude: -75.883 }
+    const selectedLocation = requests.find(r => r.location)?.location
+    const center = selectedLocation ?? fallbackCenter
+    const initialZoom = onPick && selectedLocation ? MAP_SELECTED_ZOOM : MAP_DEFAULT_ZOOM
+    const map = window.L.map(element.current).setView([center.latitude, center.longitude], initialZoom)
+    if (onPick && selectedLocation) focusMarkerNearBottom(map, mapElement, selectedLocation)
     window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap contributors', maxZoom: 19 }).addTo(map)
-    if (onPick) map.on('click', event => onPick({ latitude: event.latlng.lat, longitude: event.latlng.lng }))
+    map.on('click', event => {
+      if (onPick) {
+        const picked = { latitude: event.latlng.lat, longitude: event.latlng.lng }
+        focusMarkerNearBottom(map, mapElement, picked)
+        onPick(picked)
+      } else {
+        map.setView([center.latitude, center.longitude], MAP_DEFAULT_ZOOM)
+      }
+    })
     const mapRequests = onPick ? requests : requests.filter(request => request.status !== 'Completada')
     const grouped = new Map<string, HelpRequest[]>(); mapRequests.filter(r => r.location).forEach(request => { const key = `${request.location!.latitude.toFixed(3)},${request.location!.longitude.toFixed(3)}`; grouped.set(key, [...(grouped.get(key) ?? []), request]) })
     grouped.forEach(unsortedGroup => {
       const group = [...unsortedGroup].sort((a, b) => priorityWeight[a.priority] - priorityWeight[b.priority] || +new Date(b.createdAt) - +new Date(a.createdAt))
       const location = group[0].location!
-      const items = group.map(request => `<li><div class="map-popup-request-heading"><strong>${escapeMapText(request.category)}</strong><span class="map-priority map-priority-${priorityClass(request.priority)}">${escapeMapText(request.priority)}</span></div><span class="map-popup-status">${escapeMapText(request.status)}</span><p>${escapeMapText(request.description)}</p></li>`).join('')
+      const items = group.map(request => {
+        const phone = request.phone && request.phone !== 'PROTEGIDO' ? `<a class="map-popup-phone" href="tel:${escapeMapText(request.phone.replace(/\D/g, ''))}">☎ ${escapeMapText(request.phone)}</a>` : ''
+        const address = request.address && request.address !== 'Dirección protegida' ? `<span class="map-popup-address">⌖ ${escapeMapText(request.address)}</span>` : ''
+        const report = onReport ? `<button type="button" class="map-report-action" data-report-request="${escapeMapText(request.id)}">Reportar solución</button>` : ''
+        return `<li><div class="map-popup-request-heading"><strong>${escapeMapText(request.category)}</strong><span class="map-priority map-priority-${priorityClass(request.priority)}">${escapeMapText(request.priority)}</span></div><span class="map-popup-status">${escapeMapText(request.status)}</span><p>${escapeMapText(request.description)}</p><div class="map-popup-contact">${address}${phone}</div>${report}</li>`
+      }).join('')
       const directions = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${location.latitude},${location.longitude}`)}`
-      window.L!.marker([location.latitude, location.longitude]).addTo(map).bindPopup(`<strong>${escapeMapText(group[0].neighborhood)}</strong><br>${group.length} solicitud(es)<ul class="map-popup-list">${items}</ul><a class="map-directions" href="${directions}" target="_blank" rel="noopener noreferrer">Cómo llegar</a>`)
+      window.L!.marker([location.latitude, location.longitude], { bubblingMouseEvents: false }).addTo(map).bindPopup(`<strong>${escapeMapText(group[0].neighborhood)}</strong><br>${group.length} solicitud(es)<ul class="map-popup-list">${items}</ul><a class="map-directions" href="${directions}" target="_blank" rel="noopener noreferrer">Cómo llegar</a>`).on('click', () => focusMarkerNearBottom(map, mapElement, location))
     })
-    return () => map.remove()
-  }, [requests, onPick])
+    const handleReport = (event: MouseEvent) => {
+      const target = event.target instanceof Element ? event.target.closest<HTMLButtonElement>('[data-report-request]') : null
+      if (!target || !onReport) return
+      const request = requests.find(item => item.id === target.dataset.reportRequest)
+      if (request) onReport(request)
+    }
+    mapElement.addEventListener('click', handleReport)
+    return () => { mapElement.removeEventListener('click', handleReport); map.remove() }
+  }, [requests, onPick, onReport])
   return <div ref={element} className={`leaflet-map ${onPick ? 'location-picker-map' : ''}`}><div className="map-fallback">Cargando mapa Leaflet…</div></div>
 }
 
@@ -130,16 +163,19 @@ function CollectionCentersMap({ centers }: { centers: CollectionCenter[] }) {
   const element = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (!element.current || !window.L) return
+    const mapElement = element.current
     const center = centers[0]?.location ?? { latitude: 4.895, longitude: -75.883 }
-    const map = window.L.map(element.current).setView([center.latitude, center.longitude], centers.length ? 15 : 14)
+    const defaultZoom = centers.length ? MAP_DEFAULT_ZOOM : 14
+    const map = window.L.map(element.current).setView([center.latitude, center.longitude], defaultZoom)
     window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap contributors', maxZoom: 19 }).addTo(map)
+    map.on('click', () => map.setView([center.latitude, center.longitude], defaultZoom))
     centers.forEach(collectionCenter => {
       const directions = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${collectionCenter.location.latitude},${collectionCenter.location.longitude}`)}`
       const phone = collectionCenter.phone ? `<a href="tel:${escapeMapText(collectionCenter.phone)}">☎ ${escapeMapText(collectionCenter.phone)}</a><br>` : ''
       const hours = collectionCenter.openingHours ? `<span>Horario: ${escapeMapText(collectionCenter.openingHours)}</span><br>` : ''
       const accepted = collectionCenter.acceptedItems ? `<p><strong>Recibe:</strong> ${escapeMapText(collectionCenter.acceptedItems)}</p>` : ''
       const address = collectionCenter.address ? `<p>⌖ ${escapeMapText(collectionCenter.address)}</p>` : ''
-      window.L!.marker([collectionCenter.location.latitude, collectionCenter.location.longitude]).addTo(map).bindPopup(`<div class="collection-popup"><strong>${escapeMapText(collectionCenter.name)}</strong>${address}${phone}${hours}${accepted}<a class="map-directions" href="${directions}" target="_blank" rel="noopener noreferrer">Cómo llegar</a></div>`)
+      window.L!.marker([collectionCenter.location.latitude, collectionCenter.location.longitude], { bubblingMouseEvents: false }).addTo(map).bindPopup(`<div class="collection-popup"><strong>${escapeMapText(collectionCenter.name)}</strong>${address}${phone}${hours}${accepted}<a class="map-directions" href="${directions}" target="_blank" rel="noopener noreferrer">Cómo llegar</a></div>`).on('click', () => focusMarkerNearBottom(map, mapElement, collectionCenter.location))
     })
     return () => map.remove()
   }, [centers])
@@ -391,7 +427,7 @@ export default function App() {
   function closeSession() { logout(); setSession(null); setAdminProfile(null); setView('dashboard'); setMobileMenu(false) }
   return <div className="app-shell">{mobileMenu && <button className="sidebar-overlay" aria-label="Cerrar menú" onClick={() => setMobileMenu(false)} />}<aside id="main-sidebar" className={`sidebar ${mobileMenu ? 'mobile-open' : ''}`}><button className="sidebar-close" aria-label="Cerrar menú" onClick={() => setMobileMenu(false)}>×</button><a className="logo" href="#dashboard" onClick={() => navigate('dashboard')}><LogoMark /><b>Ayudas<br />La Virginia</b></a><nav><button className={view === 'dashboard' ? 'active' : ''} onClick={() => navigate('dashboard')}><span>▤</span>Solicitudes</button><button className={view === 'mapa' ? 'active' : ''} onClick={() => navigate('mapa')}><span>⌖</span>Mapa</button><button className={view === 'acopios' ? 'active' : ''} onClick={() => navigate('acopios')}><span>▣</span>Centros de Acopio</button><button className={view === 'informacion' ? 'active' : ''} onClick={() => navigate('informacion')}><span>ⓘ</span>Información</button></nav><div className="sidebar-bottom">{session && adminProfile ? <><button className={view === 'admin' ? 'active' : ''} onClick={() => navigate('admin')}><span>⚙</span>Administración</button><button onClick={closeSession}><span>↪</span>Cerrar sesión</button><small>{adminProfile.full_name} · {adminProfile.role}</small></> : <button onClick={openAdmin}><span>⚙</span>Acceso administrativo</button>}</div></aside><main><Header menuOpen={mobileMenu} toggleMenu={() => setMobileMenu(open => !open)} />{notice && <div className="notice">{notice}</div>}
     {view === 'dashboard' && <><section className="help-cta"><LogoMark className="help-cta-logo" /><div><span>ESTAMOS PARA AYUDARTE</span><h2>¿Necesitas ayuda?</h2><p>Cuéntanos qué necesitas y registra tu solicitud en pocos minutos.</p></div><button onClick={() => setShowForm(true)}>Solicitar ayuda <b>→</b></button></section><div className="section-heading"><div><span className="eyebrow">SOLICITUDES PÚBLICAS</span><h2>Ayudas solicitadas</h2><p className="muted">Datos personales y direcciones exactas protegidos.</p></div></div><section className="stats"><article><span className="stat-icon orange">○</span><div><strong>{requests.filter(r => r.status === 'Sin atender').length}</strong><p>Sin atender</p></div></article><article><span className="stat-icon blue">↻</span><div><strong>{requests.filter(r => r.status === 'En progreso').length}</strong><p>En progreso</p></div></article><article><span className="stat-icon green">✓</span><div><strong>{requests.filter(r => r.status === 'Completada').length}</strong><p>Completadas</p></div></article></section><section className="dashboard-filters"><label>Categoría<select value={category} onChange={e => setCategory(e.target.value as typeof category)}>{categories.map(c => <option key={c}>{c}</option>)}</select></label><label>Estado<select value={status} onChange={e => setStatus(e.target.value as typeof status)}>{statuses.map(s => <option key={s}>{s}</option>)}</select></label><label>Ordenar por<select value={sort} onChange={e => setSort(e.target.value as Sort)}><option value="priority">Prioridad</option><option value="recent">Más recientes</option><option value="oldest">Más antiguas</option></select></label></section><div className="result-count">{ordered.length} solicitudes · Página {page} de {pages} · 25 por página</div><section className="ticket-grid">{visible.map(r => <RequestCard key={r.id} request={r} onChange={setChangeFor} onDetails={session && adminProfile ? setDetailFor : undefined} completedMedia={completedMedia[r.id]} onOpenImage={setImagePreview} />)}</section><div className="pagination"><button disabled={page === 1} onClick={() => setPage(p => p - 1)}>← Anterior</button><button disabled={page === pages} onClick={() => setPage(p => p + 1)}>Siguiente →</button></div></>}
-    {view === 'mapa' && <><div className="section-heading"><div><span className="eyebrow">UBICACIONES APROXIMADAS</span><h2>Mapa de solicitudes</h2></div></div><section className="dashboard-filters map-filters" aria-label="Filtros del mapa"><label>Categoría<select value={mapCategory} onChange={event => setMapCategory(event.target.value as typeof mapCategory)}>{categories.map(option => <option key={option}>{option}</option>)}</select></label><label>Prioridad<select value={mapPriority} onChange={event => setMapPriority(event.target.value as typeof mapPriority)}>{priorities.map(option => <option key={option}>{option}</option>)}</select></label></section><div className="result-count">{mapRequests.filter(request => request.status !== 'Completada' && request.location).length} solicitudes visibles en el mapa</div><LeafletMap requests={mapRequests} /></>}
+    {view === 'mapa' && <><div className="section-heading"><div><span className="eyebrow">UBICACIONES APROXIMADAS</span><h2>Mapa de solicitudes</h2></div></div><section className="dashboard-filters map-filters" aria-label="Filtros del mapa"><label>Categoría<select value={mapCategory} onChange={event => setMapCategory(event.target.value as typeof mapCategory)}>{categories.map(option => <option key={option}>{option}</option>)}</select></label><label>Prioridad<select value={mapPriority} onChange={event => setMapPriority(event.target.value as typeof mapPriority)}>{priorities.map(option => <option key={option}>{option}</option>)}</select></label></section><div className="result-count">{mapRequests.filter(request => request.status !== 'Completada' && request.location).length} solicitudes visibles en el mapa</div><LeafletMap requests={mapRequests} onReport={setChangeFor} /></>}
     {view === 'acopios' && <CollectionCentersView centers={centers} />}
     {view === 'informacion' && <InformationView requestHelp={() => setShowForm(true)} />}
     {view === 'admin' && session && adminProfile && <AdminPanel requests={requests} admins={admins} changes={changes} centers={centers} setAdmins={setAdmins} setChanges={setChanges} setRequests={setRequests} setCenters={setCenters} session={session} role={adminProfile.role} onNewRequest={() => setShowForm(true)} />}

@@ -40,6 +40,7 @@ export async function getPrivateRequest(session: Session, id: string) {
 }
 export async function getChanges(session: Session) { return request<Array<Record<string, unknown>>>('/rest/v1/status_change_requests?select=*,help_requests(*)&order=created_at.desc', {}, session) }
 export async function getCollectionCenters(session?: Session) { return request<Array<Record<string, unknown>>>('/rest/v1/collection_centers?select=*&order=name.asc', {}, session) }
+export async function getCompletedRequestMedia() { return request<Array<{ request_id: string; request_photo_path: string | null; solution_photo_path: string | null }>>('/rest/v1/completed_request_media?select=request_id,request_photo_path,solution_photo_path') }
 
 export async function createCollectionCenter(session: Session, payload: Record<string, unknown>) {
   return request('/rest/v1/collection_centers', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(payload) }, session)
@@ -53,7 +54,7 @@ export async function deleteCollectionCenter(session: Session, id: string) {
   return request(`/rest/v1/collection_centers?id=eq.${encodeURIComponent(id)}`, { method: 'DELETE', headers: { Prefer: 'return=minimal' } }, session)
 }
 
-export async function getEvidenceUrl(session: Session, path: string) {
+export async function getEvidenceUrl(session: Session | undefined, path: string) {
   if (!url || !path) return ''
   const result = await request<{ signedURL?: string; signedUrl?: string }>(`/storage/v1/object/sign/request-evidence/${path.split('/').map(encodeURIComponent).join('/')}`, { method: 'POST', body: JSON.stringify({ expiresIn: 600 }) }, session)
   const signedPath = result.signedURL ?? result.signedUrl ?? ''

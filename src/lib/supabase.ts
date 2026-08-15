@@ -14,7 +14,7 @@ async function request<T>(path: string, options: RequestInit = {}, session?: Ses
   if (!url || !key) throw new Error('Supabase no está configurado')
   const response = await fetch(`${url}${path}`, { ...options, headers: { ...headers(session), ...(options.headers ?? {}) } })
   const body = response.status === 204 ? null : await response.json().catch(() => null)
-  if (!response.ok) throw new Error(body?.message ?? body?.error_description ?? body?.hint ?? 'Error al comunicarse con Supabase')
+  if (!response.ok) throw new Error(body?.message ?? body?.error_description ?? body?.hint ?? 'Error al ingresar los datosgit ')
   return body as T
 }
 

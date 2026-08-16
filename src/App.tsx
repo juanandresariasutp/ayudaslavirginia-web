@@ -18,7 +18,7 @@ const priorityToDb: Record<Priority, string> = { Crítica: 'critical', Alta: 'hi
 const dbToPriority: Record<string, Priority> = { critical: 'Crítica', high: 'Alta', medium: 'Media', low: 'Baja' }
 const dbToStatus: Record<string, Status> = { pending: 'Sin atender', in_progress: 'En progreso', completed: 'Completada' }
 const MAP_DEFAULT_ZOOM = 15
-const MAP_SELECTED_ZOOM = 18
+const MAP_SELECTED_ZOOM = 17
 
 function mapPublic(row: Record<string, unknown>): HelpRequest {
   return { id: String(row.id), publicCode: String(row.public_code ?? row.id), fullName: 'Dato protegido', documentType: 'Cédula de ciudadanía', documentNumber: 'PROTEGIDO', phone: row.contact_phone ? String(row.contact_phone) : 'PROTEGIDO', neighborhood: String(row.neighborhood), address: row.contact_address ? String(row.contact_address) : 'Dirección protegida', description: String(row.description), category: dbToCategory[String(row.category)] ?? 'Otros', status: dbToStatus[String(row.status)] ?? 'Sin atender', priority: dbToPriority[String(row.priority)] ?? 'Media', createdAt: String(row.created_at), location: row.public_latitude == null ? undefined : { latitude: Number(row.public_latitude), longitude: Number(row.public_longitude) } }
@@ -41,7 +41,7 @@ declare global {
   interface Window { L?: { map: (element: HTMLElement) => LeafletMap; tileLayer: (url: string, options: object) => { addTo: (map: LeafletMap) => void }; marker: (point: [number, number], options?: { bubblingMouseEvents?: boolean }) => LeafletMarker } }
 }
 interface LeafletMap { setView: (point: [number, number], zoom: number) => LeafletMap; panBy: (offset: [number, number], options?: { animate?: boolean }) => LeafletMap; on: (event: string, handler: (event: { latlng: { lat: number; lng: number } }) => void) => LeafletMap; remove: () => void }
-interface LeafletMarker { addTo: (map: LeafletMap) => LeafletMarker; bindPopup: (content: string) => LeafletMarker; on: (event: string, handler: () => void) => LeafletMarker }
+interface LeafletMarker { addTo: (map: LeafletMap) => LeafletMarker; bindPopup: (content: string, options?: { autoPan?: boolean }) => LeafletMarker; on: (event: string, handler: () => void) => LeafletMarker }
 
 function LogoMark({ className = '' }: { className?: string }) {
   return <span className={`brand-mark ${className}`.trim()} aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M12 21.35 10.55 20C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09A6.02 6.02 0 0 1 16.5 3C19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.51L12 21.35Z" /></svg></span>
@@ -107,7 +107,8 @@ function priorityClass(priority: Priority) {
 }
 
 function focusMarkerNearBottom(map: LeafletMap, mapElement: HTMLElement, location: Location) {
-  const verticalOffset = Math.min(150, Math.max(90, Math.round(mapElement.clientHeight * 0.22)))
+  const bottomMargin = Math.min(80, Math.max(48, Math.round(mapElement.clientHeight * 0.08)))
+  const verticalOffset = Math.max(0, Math.round(mapElement.clientHeight / 2) - bottomMargin)
   map.setView([location.latitude, location.longitude], MAP_SELECTED_ZOOM)
   map.panBy([0, -verticalOffset], { animate: false })
 }
@@ -145,7 +146,7 @@ function LeafletMap({ requests, onPick, onReport }: { requests: HelpRequest[]; o
         return `<li><div class="map-popup-request-heading"><strong>${escapeMapText(request.category)}</strong><span class="map-priority map-priority-${priorityClass(request.priority)}">${escapeMapText(request.priority)}</span></div><span class="map-popup-status">${escapeMapText(request.status)}</span><p>${escapeMapText(request.description)}</p><div class="map-popup-contact">${address}${phone}</div>${report}</li>`
       }).join('')
       const directions = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${location.latitude},${location.longitude}`)}`
-      window.L!.marker([location.latitude, location.longitude], { bubblingMouseEvents: false }).addTo(map).bindPopup(`<strong>${escapeMapText(group[0].neighborhood)}</strong><br>${group.length} solicitud(es)<ul class="map-popup-list">${items}</ul><a class="map-directions" href="${directions}" target="_blank" rel="noopener noreferrer">Cómo llegar</a>`).on('click', () => focusMarkerNearBottom(map, mapElement, location))
+      window.L!.marker([location.latitude, location.longitude], { bubblingMouseEvents: false }).addTo(map).bindPopup(`<strong>${escapeMapText(group[0].neighborhood)}</strong><br>${group.length} solicitud(es)<ul class="map-popup-list">${items}</ul><a class="map-directions" href="${directions}" target="_blank" rel="noopener noreferrer">Cómo llegar</a>`, { autoPan: false }).on('click', () => focusMarkerNearBottom(map, mapElement, location))
     })
     const handleReport = (event: MouseEvent) => {
       const target = event.target instanceof Element ? event.target.closest<HTMLButtonElement>('[data-report-request]') : null
@@ -175,7 +176,7 @@ function CollectionCentersMap({ centers }: { centers: CollectionCenter[] }) {
       const hours = collectionCenter.openingHours ? `<span>Horario: ${escapeMapText(collectionCenter.openingHours)}</span><br>` : ''
       const accepted = collectionCenter.acceptedItems ? `<p><strong>Recibe:</strong> ${escapeMapText(collectionCenter.acceptedItems)}</p>` : ''
       const address = collectionCenter.address ? `<p>⌖ ${escapeMapText(collectionCenter.address)}</p>` : ''
-      window.L!.marker([collectionCenter.location.latitude, collectionCenter.location.longitude], { bubblingMouseEvents: false }).addTo(map).bindPopup(`<div class="collection-popup"><strong>${escapeMapText(collectionCenter.name)}</strong>${address}${phone}${hours}${accepted}<a class="map-directions" href="${directions}" target="_blank" rel="noopener noreferrer">Cómo llegar</a></div>`).on('click', () => focusMarkerNearBottom(map, mapElement, collectionCenter.location))
+      window.L!.marker([collectionCenter.location.latitude, collectionCenter.location.longitude], { bubblingMouseEvents: false }).addTo(map).bindPopup(`<div class="collection-popup"><strong>${escapeMapText(collectionCenter.name)}</strong>${address}${phone}${hours}${accepted}<a class="map-directions" href="${directions}" target="_blank" rel="noopener noreferrer">Cómo llegar</a></div>`, { autoPan: false }).on('click', () => focusMarkerNearBottom(map, mapElement, collectionCenter.location))
     })
     return () => map.remove()
   }, [centers])

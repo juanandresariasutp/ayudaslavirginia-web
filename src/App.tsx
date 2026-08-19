@@ -81,6 +81,7 @@ function requestDirectionsUrl(request: HelpRequest) {
 
 function requestSubmissionError(error: unknown) {
   const message = error instanceof Error ? error.message : ''
+  if (message.includes('10 MB') || message.includes('procesar la fotografía') || message.includes('optimizar la fotografía') || message.includes('debe ser una imagen')) return message
   if (message.includes('help_requests_description_check')) return 'La descripción debe tener entre 10 y 2000 caracteres.'
   if (message.includes('help_requests_new_consent_proof_required')) return 'Debes aceptar el tratamiento de datos y confirmar que eres una persona.'
   if (message.includes('help_requests_public_contact_consent_required')) return 'Debes autorizar la publicación del teléfono y la dirección exacta.'
@@ -278,7 +279,7 @@ function RequestForm({ close, create }: { close: () => void; create: (request: H
     if (!input) return
     input.required = Boolean(category && categoryRequiresPhoto(category))
     const help = input.parentElement?.querySelector('small')
-    if (help) help.textContent = category ? `${categoryRequiresPhoto(category) ? 'Obligatoria' : 'Opcional'} para ${category}. Puedes tomar una foto o escogerla de la galería. Evita incluir documentos o información innecesaria.` : 'Selecciona primero una categoría para conocer si la fotografía es obligatoria.'
+    if (help) help.textContent = category ? `${categoryRequiresPhoto(category) ? 'Obligatoria' : 'Opcional'} para ${category}. Máximo 10 MB; se optimizará antes de enviarla. Puedes tomar una foto o escogerla de la galería.` : 'Selecciona primero una categoría para conocer si la fotografía es obligatoria. Tamaño máximo: 10 MB.'
   }, [category])
   function locate() {
     if (!navigator.geolocation) return setLocationState('Este dispositivo no admite ubicación')
@@ -493,9 +494,10 @@ export default function App() {
   const ordered = useMemo(() => requests.filter(r => (!requestDate || requestCalendarDate(r.createdAt) === requestDate) && (requestSearch ? requestCodeNumber(r) === String(Number(requestSearch)) : (category === 'Todas' || r.category === category) && (status === 'Activas' ? r.status !== 'Completada' : r.status === status))).sort((a, b) => { if (a.status === 'Completada' && b.status !== 'Completada') return 1; if (b.status === 'Completada' && a.status !== 'Completada') return -1; if (sort === 'priority') return priorityWeight[a.priority] - priorityWeight[b.priority] || +new Date(b.createdAt) - +new Date(a.createdAt); return sort === 'oldest' ? +new Date(a.createdAt) - +new Date(b.createdAt) : +new Date(b.createdAt) - +new Date(a.createdAt) }), [requests, category, status, sort, requestSearch, requestDate])
   const mapRequests = useMemo(() => requests.filter(request => (mapCategory === 'Todas' || request.category === mapCategory) && (mapPriority === 'Todas' || request.priority === mapPriority)), [requests, mapCategory, mapPriority])
   const pages = Math.max(1, Math.ceil(ordered.length / PAGE_SIZE)); const visible = ordered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+  const visibleCompletedMediaKey = visible.filter(request => request.status === 'Completada').map(request => request.id).join(',')
   useEffect(() => setPage(1), [category, status, sort, requestSearch, requestDate])
   useEffect(() => { if (!supabaseConfigured) { setRequests(initialRequests); return } getPublicRequests().then(rows => setRequests(rows.map(mapPublic))).catch(() => setNotice('No fue posible cargar Supabase.')) }, [])
-  useEffect(() => { if (!supabaseConfigured) return; getCompletedRequestMedia().then(async rows => { const entries = await Promise.all(rows.map(async row => { const [requestUrl, solutionUrl] = await Promise.all([row.request_photo_path ? getEvidenceUrl(undefined, row.request_photo_path).catch(() => '') : '', row.solution_photo_path ? getEvidenceUrl(undefined, row.solution_photo_path).catch(() => '') : '']); return [row.request_id, { requestUrl: requestUrl || undefined, solutionUrl: solutionUrl || undefined }] as const })); setCompletedMedia(Object.fromEntries(entries)) }).catch(() => undefined) }, [requests])
+  useEffect(() => { if (!supabaseConfigured || !visibleCompletedMediaKey) { setCompletedMedia({}); return } const visibleIds = new Set(visibleCompletedMediaKey.split(',')); getCompletedRequestMedia().then(async rows => { const entries = await Promise.all(rows.filter(row => visibleIds.has(row.request_id)).map(async row => { const [requestUrl, solutionUrl] = await Promise.all([row.request_photo_path ? getEvidenceUrl(undefined, row.request_photo_path).catch(() => '') : '', row.solution_photo_path ? getEvidenceUrl(undefined, row.solution_photo_path).catch(() => '') : '']); return [row.request_id, { requestUrl: requestUrl || undefined, solutionUrl: solutionUrl || undefined }] as const })); setCompletedMedia(Object.fromEntries(entries)) }).catch(() => undefined) }, [visibleCompletedMediaKey])
   useEffect(() => { if (!supabaseConfigured) return; getCollectionCenters(session ?? undefined).then(rows => setCenters(rows.map(mapCollectionCenter))).catch(() => setNotice('No fue posible cargar los centros de acopio.')) }, [session])
   useEffect(() => { if (!session) return; getAdminProfile(session).then(setAdminProfile).catch(() => { logout(); setSession(null) }) }, [session])
   async function refresh() { const rows = await getPublicRequests(); setRequests(rows.map(mapPublic)) }

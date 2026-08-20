@@ -1,3 +1,5 @@
+import { optimizeImage } from '../utils/imageOptimizer'
+
 const url = import.meta.env.VITE_SUPABASE_URL as string | undefined
 const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined
 
@@ -61,40 +63,7 @@ export async function getEvidenceUrl(session: Session | undefined, path: string)
   return signedPath.startsWith('http') ? signedPath : `${url}/storage/v1${signedPath}`
 }
 
-const MAX_IMAGE_BYTES = 10 * 1024 * 1024
-const MAX_IMAGE_SIDE = 1600
-const IMAGE_QUALITY = 0.72
 
-async function optimizeImage(file: File) {
-  if (file.size > MAX_IMAGE_BYTES) throw new Error('La fotografía supera el tamaño máximo permitido de 10 MB.')
-  if (!file.type.startsWith('image/')) throw new Error('El archivo seleccionado debe ser una imagen.')
-
-  const objectUrl = URL.createObjectURL(file)
-  try {
-    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const element = new Image()
-      element.onload = () => resolve(element)
-      element.onerror = () => reject(new Error('No fue posible procesar la fotografía. Intenta con una imagen JPG, PNG o WebP.'))
-      element.src = objectUrl
-    })
-    const scale = Math.min(1, MAX_IMAGE_SIDE / Math.max(image.naturalWidth, image.naturalHeight))
-    const width = Math.max(1, Math.round(image.naturalWidth * scale))
-    const height = Math.max(1, Math.round(image.naturalHeight * scale))
-    const canvas = document.createElement('canvas')
-    canvas.width = width
-    canvas.height = height
-    const context = canvas.getContext('2d')
-    if (!context) throw new Error('Este dispositivo no pudo optimizar la fotografía.')
-    context.drawImage(image, 0, 0, width, height)
-    const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/webp', IMAGE_QUALITY))
-    if (!blob) throw new Error('Este dispositivo no pudo optimizar la fotografía.')
-    if (blob.size >= file.size && scale === 1) return file
-    const baseName = file.name.replace(/\.[^.]+$/, '') || 'fotografia'
-    return new File([blob], `${baseName}.webp`, { type: 'image/webp', lastModified: Date.now() })
-  } finally {
-    URL.revokeObjectURL(objectUrl)
-  }
-}
 
 export async function uploadEvidence(folder: 'requests' | 'changes', file: File, session?: Session) {
   if (!url || !key) throw new Error('Supabase no está configurado')

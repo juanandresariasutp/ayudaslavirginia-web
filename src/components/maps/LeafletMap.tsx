@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import type { HelpRequest, Location } from '../../types'
-import { MAP_DEFAULT_ZOOM, MAP_SELECTED_ZOOM, priorityWeight } from '../../config/constants'
+import { LA_VIRGINIA_CENTER, MAP_DEFAULT_ZOOM, MAP_SELECTED_ZOOM, priorityWeight } from '../../config/constants'
 import { escapeMapText, priorityClass } from '../../utils/formatters'
 
 declare global {
@@ -47,17 +47,12 @@ interface LeafletMapProps {
 function focusMarkerNearBottom(
   map: LeafletMapInstance,
   mapElement: HTMLElement,
-  location: Location
+  location: Location,
+  zoomLevel: number = MAP_SELECTED_ZOOM
 ) {
-  const bottomMargin = Math.min(
-    80,
-    Math.max(48, Math.round(mapElement.clientHeight * 0.08))
-  )
-  const verticalOffset = Math.max(
-    0,
-    Math.round(mapElement.clientHeight / 2) - bottomMargin
-  )
-  map.setView([location.latitude, location.longitude], MAP_SELECTED_ZOOM)
+  const mapHeight = mapElement.clientHeight || 600
+  const verticalOffset = Math.min(150, Math.max(40, Math.round(mapHeight * 0.22)))
+  map.setView([location.latitude, location.longitude], zoomLevel)
   map.panBy([0, -verticalOffset], { animate: false })
 }
 
@@ -67,9 +62,8 @@ export function LeafletMap({ requests, onPick, onReport }: LeafletMapProps) {
   useEffect(() => {
     if (!element.current || !window.L) return
     const mapElement = element.current
-    const fallbackCenter = { latitude: 4.895, longitude: -75.883 }
     const selectedLocation = requests.find(r => r.location)?.location
-    const center = selectedLocation ?? fallbackCenter
+    const center = onPick && selectedLocation ? selectedLocation : LA_VIRGINIA_CENTER
     const initialZoom = onPick && selectedLocation ? MAP_SELECTED_ZOOM : MAP_DEFAULT_ZOOM
 
     const map = window.L.map(element.current).setView(

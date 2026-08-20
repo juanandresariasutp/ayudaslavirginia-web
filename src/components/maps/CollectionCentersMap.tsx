@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import type { CollectionCenter, Location } from '../../types'
-import { MAP_DEFAULT_ZOOM, MAP_SELECTED_ZOOM } from '../../config/constants'
+import { LA_VIRGINIA_CENTER, MAP_DEFAULT_ZOOM, MAP_SELECTED_ZOOM } from '../../config/constants'
 import { escapeMapText } from '../../utils/formatters'
 import type { LeafletMapInstance } from './LeafletMap'
 
@@ -11,17 +11,12 @@ interface CollectionCentersMapProps {
 function focusMarkerNearBottom(
   map: LeafletMapInstance,
   mapElement: HTMLElement,
-  location: Location
+  location: Location,
+  zoomLevel: number = MAP_SELECTED_ZOOM
 ) {
-  const bottomMargin = Math.min(
-    80,
-    Math.max(48, Math.round(mapElement.clientHeight * 0.08))
-  )
-  const verticalOffset = Math.max(
-    0,
-    Math.round(mapElement.clientHeight / 2) - bottomMargin
-  )
-  map.setView([location.latitude, location.longitude], MAP_SELECTED_ZOOM)
+  const mapHeight = mapElement.clientHeight || 600
+  const verticalOffset = Math.min(150, Math.max(40, Math.round(mapHeight * 0.22)))
+  map.setView([location.latitude, location.longitude], zoomLevel)
   map.panBy([0, -verticalOffset], { animate: false })
 }
 
@@ -31,8 +26,8 @@ export function CollectionCentersMap({ centers }: CollectionCentersMapProps) {
   useEffect(() => {
     if (!element.current || !window.L) return
     const mapElement = element.current
-    const center = centers[0]?.location ?? { latitude: 4.895, longitude: -75.883 }
-    const defaultZoom = centers.length ? MAP_DEFAULT_ZOOM : 14
+    const center = LA_VIRGINIA_CENTER
+    const defaultZoom = MAP_DEFAULT_ZOOM
     const map = window.L.map(element.current).setView(
       [center.latitude, center.longitude],
       defaultZoom

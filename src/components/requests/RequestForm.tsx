@@ -144,6 +144,7 @@ export function RequestForm({ close, create }: RequestFormProps) {
               <option>Pasaporte</option>
               <option>Permiso por protección temporal</option>
             </select>
+            <small>Selecciona tu tipo de documento oficial.</small>
           </label>
           <label className="validated-field">
             Número de documento
@@ -178,10 +179,12 @@ export function RequestForm({ close, create }: RequestFormProps) {
           <label>
             Barrio
             <NeighborhoodInput name="neighborhood" required />
+            <small>Escribe o selecciona tu barrio de La Virginia.</small>
           </label>
           <label>
             Dirección exacta
             <input name="address" autoComplete="street-address" required />
+            <small>Incluye calle, carrera, número o referencia.</small>
           </label>
           <label htmlFor="request-category">
             Categoría
@@ -199,6 +202,7 @@ export function RequestForm({ close, create }: RequestFormProps) {
                 <option key={c}>{c}</option>
               ))}
             </select>
+            <small>Selecciona la categoría principal de la solicitud.</small>
           </label>
           <label className="priority-field">
             <span className="priority-label">
@@ -228,6 +232,7 @@ export function RequestForm({ close, create }: RequestFormProps) {
               <option>Media</option>
               <option>Baja</option>
             </select>
+            <small>Indica la urgencia para atender tu necesidad.</small>
             {showPriorityHelp &&
               createPortal(
                 <div

@@ -1,8 +1,9 @@
-import type { Category, Priority, Status } from '../types'
+import type { Category, Location, Priority, Status } from '../types'
 
 export const PAGE_SIZE = 25
 export const MAP_DEFAULT_ZOOM = 15
-export const MAP_SELECTED_ZOOM = 17
+export const MAP_SELECTED_ZOOM = 16
+export const LA_VIRGINIA_CENTER: Location = { latitude: 4.8996, longitude: -75.8817 }
 
 export const categories: Array<'Todas' | Category> = [
   'Todas',

@@ -40,13 +40,61 @@ Los datos públicos están separados de la información privada. El número de d
 .
 ├── src/
 │   ├── App.tsx
-│   ├── lib/supabase.ts
+│   ├── main.tsx
 │   ├── styles.css
-│   └── types.ts
-├── supabase/migrations/
+│   ├── data.ts
+│   ├── vite-env.d.ts
+│   ├── components/
+│   │   ├── admin/
+│   │   │   ├── AdminLoginModal.tsx
+│   │   │   ├── AdminPanel.tsx
+│   │   │   ├── ApprovalDetailModal.tsx
+│   │   │   ├── EditAdminModal.tsx
+│   │   │   ├── EditRequestModal.tsx
+│   │   │   ├── ReviewStatistics.tsx
+│   │   │   └── StatusChangeFormModal.tsx
+│   │   ├── collectionCenters/
+│   │   │   └── CollectionCenterFormModal.tsx
+│   │   ├── common/
+│   │   │   ├── Header.tsx
+│   │   │   ├── Icons.tsx
+│   │   │   ├── ImageModal.tsx
+│   │   │   ├── LogoMark.tsx
+│   │   │   ├── NeighborhoodInput.tsx
+│   │   │   ├── PasswordInput.tsx
+│   │   │   └── SignaturePad.tsx
+│   │   ├── maps/
+│   │   │   ├── CollectionCentersMap.tsx
+│   │   │   └── LeafletMap.tsx
+│   │   └── requests/
+│   │       ├── PrivacyConsentModal.tsx
+│   │       ├── RequestCard.tsx
+│   │       ├── RequestDetailModal.tsx
+│   │       └── RequestForm.tsx
+│   ├── config/
+│   │   └── constants.ts
+│   ├── lib/
+│   │   └── supabase.ts
+│   ├── types/
+│   │   └── index.ts
+│   ├── utils/
+│   │   ├── formatters.ts
+│   │   ├── imageOptimizer.ts
+│   │   ├── mappers.ts
+│   │   └── validators.ts
+│   └── views/
+│       ├── CollectionCentersPageView.tsx
+│       ├── DashboardView.tsx
+│       ├── InformationView.tsx
+│       └── MapView.tsx
+├── supabase/
+│   └── migrations/
+├── public/
 ├── .env.example
 ├── index.html
-└── package.json
+├── package.json
+├── tsconfig.json
+└── vite.config.ts
 ```
 
 ## Ejecución local

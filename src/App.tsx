@@ -52,6 +52,9 @@ import { DashboardView } from './views/DashboardView'
 import { MapView } from './views/MapView'
 import { CollectionCentersPageView } from './views/CollectionCentersPageView'
 import { InformationView } from './views/InformationView'
+import { MaintenanceView } from './views/MaintenanceView'
+
+const MAINTENANCE_MODE = true
 
 export default function App() {
   const [view, setView] = useState<View>('dashboard')
@@ -245,6 +248,25 @@ export default function App() {
     setAdminProfile(null)
     setView('dashboard')
     setMobileMenu(false)
+  }
+
+  if (MAINTENANCE_MODE && !(session && adminProfile)) {
+    return (
+      <>
+        <MaintenanceView onAdminAccess={() => setShowLogin(true)} />
+        {showLogin && (
+          <AdminLoginModal
+            close={() => setShowLogin(false)}
+            success={(nextSession, profile) => {
+              setSession(nextSession)
+              setAdminProfile(profile)
+              setShowLogin(false)
+              setView('admin')
+            }}
+          />
+        )}
+      </>
+    )
   }
 
   return (

@@ -170,7 +170,7 @@ main { width: min(1180px, 100%); padding: 32px 48px 64px; }
 .priority-help-close:hover, .priority-help-close:focus-visible { color: #17352b; background: #dfeae3; outline: 2px solid #4f8fd855; }
 
 /* Modo de mantenimiento público */
-.maintenance-page { min-height: 100dvh; display: grid; place-items: center; padding: 28px; background: radial-gradient(circle at top, #edf8f1 0, #f7faf7 45%, #edf3ef 100%); }
+.maintenance-page { width: 100%; max-width: none; min-height: 100dvh; margin: 0; display: grid; place-items: center; padding: 28px; background: radial-gradient(circle at top, #edf8f1 0, #f7faf7 45%, #edf3ef 100%); }
 .maintenance-card { width: min(620px, 100%); padding: 42px; border: 1px solid #d7e4da; border-radius: 24px; background: #fff; box-shadow: 0 24px 70px #17352b1f; text-align: center; }
 .maintenance-brand { display: flex; align-items: center; justify-content: center; gap: 13px; margin-bottom: 38px; text-align: left; }
 .maintenance-brand .brand-mark { width: 52px; height: 52px; }
@@ -430,6 +430,5 @@ body:has(.modal-backdrop) { overflow: hidden; }
     transform: translateY(0);
   }
 }
-
 
 

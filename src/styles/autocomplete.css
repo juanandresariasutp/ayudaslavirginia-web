@@ -50,7 +50,9 @@
   font-weight: 700;
   font-family: inherit;
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .tooltip-suggestion-item:hover,
@@ -69,5 +71,3 @@
     transform: translateY(0);
   }
 }
-
-

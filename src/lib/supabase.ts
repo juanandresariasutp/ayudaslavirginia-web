@@ -1,4 +1,6 @@
 import { optimizeImage } from '../utils/imageOptimizer'
+import type { SimilarRequestGroup } from '../types'
+import { dbToCategory, dbToStatus } from '../config/constants'
 
 const url = import.meta.env.VITE_SUPABASE_URL as string | undefined
 const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined
@@ -39,6 +41,35 @@ export async function getPrivateRequests(session: Session) { return request<Arra
 export async function getPrivateRequest(session: Session, id: string) {
   const row = await request<Record<string, unknown> | null>('/rest/v1/rpc/get_private_help_request', { method: 'POST', body: JSON.stringify({ request_id: id }) }, session)
   return row ? [row] : []
+}
+export async function detectSimilarRequests(session: Session): Promise<SimilarRequestGroup[]> {
+  const rows = await request<Array<{
+    match_type: 'document' | 'phone'
+    masked_value: string
+    request_count: number
+    requests: Array<{
+      id: string
+      public_code: string
+      neighborhood: string
+      category: string
+      status: string
+      created_at: string
+    }>
+  }>>('/rest/v1/rpc/detect_similar_help_requests', { method: 'POST', body: '{}' }, session)
+
+  return rows.map((group) => ({
+    matchType: group.match_type,
+    maskedValue: group.masked_value,
+    requestCount: group.request_count,
+    requests: group.requests.map((item) => ({
+      id: item.id,
+      publicCode: item.public_code,
+      neighborhood: item.neighborhood,
+      category: dbToCategory[item.category] ?? 'Otros',
+      status: dbToStatus[item.status] ?? 'Sin atender',
+      createdAt: item.created_at
+    }))
+  }))
 }
 export async function getChanges(session: Session) { return request<Array<Record<string, unknown>>>('/rest/v1/status_change_requests?select=*,help_requests(*),reviewer:admin_profiles!status_change_requests_reviewed_by_fkey(full_name)&order=created_at.desc', {}, session) }
 export async function getCollectionCenters(session?: Session) { return request<Array<Record<string, unknown>>>('/rest/v1/collection_centers?select=*&order=name.asc', {}, session) }

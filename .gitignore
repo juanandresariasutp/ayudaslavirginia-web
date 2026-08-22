@@ -15,5 +15,8 @@ supabase/seed.sql
 supabase/seed.local.sql
 supabase/*.seed.sql
 
+# Estado temporal generado por Supabase CLI
+supabase/.temp/
+
 # Evidencia local usada durante desarrollo; no pertenece al código fuente
 /7bc7dd51-f76e-48e4-b929-5e1b34da529c.png

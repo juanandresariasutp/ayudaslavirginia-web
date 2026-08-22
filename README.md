@@ -12,6 +12,7 @@ Aplicación web para registrar, visualizar y administrar solicitudes de ayuda en
 - Mapa que agrupa solicitudes ubicadas en el mismo punto.
 - Inicio de sesión exclusivo para administradores.
 - Aprobación o rechazo administrativo de cambios de estado.
+- Panel privado de estadísticas con filtros, gráficos operativos, detección de solicitudes repetidas y actividad administrativa.
 - CRUD completo para el rol `superadmin`.
 - Diseño responsive con menú hamburguesa en dispositivos móviles.
 
@@ -49,6 +50,7 @@ Los datos públicos están separados de la información privada. El número de d
 │   │   ├── features.css           # Funcionalidades complementarias
 │   │   ├── maintenance.css        # Pantalla de mantenimiento
 │   │   ├── public-flow.css        # Solicitudes y flujo público
+│   │   ├── statistics.css         # Panel y gráficos de estadísticas
 │   │   └── responsive.css         # Adaptaciones para móvil y tablet
 │   ├── data.ts
 │   ├── vite-env.d.ts
@@ -95,7 +97,8 @@ Los datos públicos están separados de la información privada. El número de d
 │       ├── DashboardView.tsx
 │       ├── InformationView.tsx
 │       ├── MaintenanceView.tsx
-│       └── MapView.tsx
+│       ├── MapView.tsx
+│       └── StatisticsView.tsx
 ├── supabase/
 │   └── migrations/
 ├── public/
@@ -115,8 +118,28 @@ Los datos públicos están separados de la información privada. El número de d
 3. `maintenance.css`: pantalla temporal de mantenimiento y acceso administrativo.
 4. `administration.css`: panel administrativo, CRUD, aprobaciones, evidencias y centros de acopio.
 5. `features.css`: privacidad, validaciones, contraseñas y sección informativa.
-6. `responsive.css`: menú móvil, modales, mapas y ajustes para tablet y celular.
-7. `autocomplete.css`: presentación del listado de sugerencias de barrios.
+6. `statistics.css`: indicadores, gráficos, filtros y adaptación del panel estadístico.
+7. `responsive.css`: menú móvil, modales, mapas y ajustes para tablet y celular.
+8. `autocomplete.css`: presentación del listado de sugerencias de barrios.
+
+## Estadísticas administrativas
+
+Los roles `admin` y `superadmin` tienen acceso a una sección privada de estadísticas. El panel usa los datos ya cargados por la aplicación y permite filtrar por rango de fechas, categoría, prioridad y estado.
+
+Incluye:
+
+- resumen de solicitudes, porcentaje completado y casos críticos activos;
+- aprobaciones pendientes;
+- detector seguro de solicitudes con la misma cédula o teléfono;
+- distribución por estado, categoría, prioridad y barrio;
+- tendencia de solicitudes creadas por día;
+- listado de solicitudes críticas todavía activas;
+- actividad de aprobaciones y rechazos por administrador.
+
+El detector de similitudes se ejecuta en PostgreSQL mediante una función RPC
+restringida a administradores activos. Las cédulas se comparan dentro de la base
+de datos después de descifrarlas y la interfaz solo recibe identificadores
+enmascarados, los códigos públicos y datos operativos de las coincidencias.
 
 Al crear o modificar estilos, utiliza el módulo correspondiente y evita cambiar el orden de los imports en `styles.css` sin revisar posibles efectos sobre la cascada.
 

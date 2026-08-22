@@ -1,4 +1,4 @@
-import React, { FormEvent, useEffect, useState } from 'react'
+import React, { FormEvent, useEffect, useMemo, useState } from 'react'
 import type { AdminUser, ChangeRequest, CollectionCenter, HelpRequest, Session } from '../../types'
 import {
   createAdmin,
@@ -59,6 +59,17 @@ export function AdminPanel({
   const [editingRequest, setEditingRequest] = useState<HelpRequest>()
   const [editingAdmin, setEditingAdmin] = useState<AdminUser>()
   const [editingCenter, setEditingCenter] = useState<CollectionCenter | null>()
+  const [approvalSearch, setApprovalSearch] = useState('')
+
+  const filteredChanges = useMemo(() => {
+    if (!approvalSearch) return changes
+    const searchedNumber = String(Number(approvalSearch))
+    return changes.filter(change => {
+      const requestCode = change.requestDetails?.publicCode ?? change.requestId
+      const number = requestCode.match(/(\d+)$/)?.[1]
+      return number ? String(Number(number)) === searchedNumber : false
+    })
+  }, [approvalSearch, changes])
 
   useEffect(() => {
     getChanges(session)
@@ -302,8 +313,23 @@ export function AdminPanel({
       {tab === 'aprobaciones' && (
         <>
           {role === 'superadmin' && <ReviewStatistics changes={changes} />}
+          <section className="admin-approval-search" aria-label="Buscar aprobación por solicitud">
+            <label>
+              Buscar por número de solicitud
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={10}
+                value={approvalSearch}
+                onChange={event => setApprovalSearch(event.target.value.replace(/\D/g, ''))}
+                placeholder="Ej. 329 para encontrar solicitud_0329"
+                aria-label="Buscar aprobación por número de solicitud"
+              />
+            </label>
+          </section>
           <div className="admin-list">
-            {changes.map(c => (
+            {filteredChanges.map(c => (
               <article key={c.id}>
                 <div>
                   <b>
@@ -344,6 +370,13 @@ export function AdminPanel({
                 </div>
               </article>
             ))}
+            {!filteredChanges.length && (
+              <div className="empty">
+                {approvalSearch
+                  ? `No se encontraron aprobaciones para solicitud_${approvalSearch.padStart(4, '0')}.`
+                  : 'No hay aprobaciones registradas.'}
+              </div>
+            )}
           </div>
         </>
       )}

@@ -31,21 +31,6 @@ function countBy<T>(items: T[], getLabel: (item: T) => string): ChartItem[] {
     .sort((a, b) => b.value - a.value || a.label.localeCompare(b.label, "es"));
 }
 
-function averageHours(values: number[]): number | null {
-  return values.length
-    ? values.reduce((total, value) => total + value, 0) /
-        values.length /
-        3_600_000
-    : null;
-}
-
-function formatHours(value: number | null): string {
-  if (value === null) return "Sin datos";
-  return value < 24
-    ? `${value.toFixed(1)} h`
-    : `${(value / 24).toFixed(1)} días`;
-}
-
 function HorizontalBars({ items }: { items: ChartItem[] }) {
   const maximum = Math.max(...items.map((item) => item.value), 1);
   if (!items.length)
@@ -114,28 +99,6 @@ export function StatisticsView({
         (request) => request.status === "Completada",
       ).length,
     };
-    const completionDurations = relatedChanges
-      .filter(
-        (change) =>
-          change.state === "Aprobado" &&
-          change.requestedStatus === "Completada" &&
-          change.reviewedAt,
-      )
-      .map((change) => {
-        const request = filteredRequests.find(
-          (item) => item.id === change.requestId,
-        );
-        return request
-          ? +new Date(change.reviewedAt!) - +new Date(request.createdAt)
-          : -1;
-      })
-      .filter((duration) => duration >= 0);
-    const reviewDurations = reviewed
-      .filter((change) => change.reviewedAt)
-      .map(
-        (change) => +new Date(change.reviewedAt!) - +new Date(change.createdAt),
-      )
-      .filter((duration) => duration >= 0);
     const activity = countBy(
       reviewed,
       (change) => change.reviewedByName ?? "No identificado",
@@ -174,8 +137,6 @@ export function StatisticsView({
       )
         .sort((a, b) => a.label.localeCompare(b.label))
         .slice(-14),
-      averageCompletion: averageHours(completionDurations),
-      averageReview: averageHours(reviewDurations),
       pendingReviews: relatedChanges.filter(
         (change) => change.state === "Pendiente",
       ).length,
@@ -297,16 +258,6 @@ export function StatisticsView({
           <span>Aprobaciones pendientes</span>
           <strong>{statistics.pendingReviews}</strong>
           <small>Por revisar</small>
-        </article>
-        <article>
-          <span>Tiempo hasta completar</span>
-          <strong>{formatHours(statistics.averageCompletion)}</strong>
-          <small>Promedio</small>
-        </article>
-        <article>
-          <span>Tiempo de revisión</span>
-          <strong>{formatHours(statistics.averageReview)}</strong>
-          <small>Promedio administrativo</small>
         </article>
       </div>
 

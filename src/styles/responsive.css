@@ -164,6 +164,18 @@ body:has(.modal-backdrop) {
     width: 100%;
     min-height: 46px;
   }
+  .admin-approval-search {
+    padding: 10px;
+  }
+  .admin-approval-search label {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+    font-size: 11px;
+  }
+  .admin-approval-search input {
+    min-height: 40px;
+    font-size: 16px;
+  }
   .request-modal {
     overflow-x: hidden;
   }

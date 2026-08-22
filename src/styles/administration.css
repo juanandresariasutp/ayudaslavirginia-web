@@ -97,6 +97,35 @@
   justify-content: flex-end;
   margin-bottom: 12px;
 }
+.admin-approval-search {
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  border: 1px solid #8eb9ec;
+  border-radius: 13px;
+  background: #eaf3ff;
+}
+.admin-approval-search label {
+  display: grid;
+  grid-template-columns: minmax(210px, auto) minmax(240px, 1fr);
+  align-items: center;
+  gap: 14px;
+  font-size: 13px;
+  font-weight: 800;
+}
+.admin-approval-search input {
+  width: 100%;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 2px solid #4f8fd8;
+  border-radius: 9px;
+  color: #17352b;
+  background: white;
+  outline: none;
+}
+.admin-approval-search input:focus {
+  border-color: #2563a9;
+  box-shadow: 0 0 0 3px #4f8fd833;
+}
 .signature-field {
   display: grid;
   gap: 6px;

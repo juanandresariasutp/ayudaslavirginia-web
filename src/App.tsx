@@ -54,7 +54,7 @@ import { CollectionCentersPageView } from './views/CollectionCentersPageView'
 import { InformationView } from './views/InformationView'
 import { MaintenanceView } from './views/MaintenanceView'
 
-const MAINTENANCE_MODE = true
+const MAINTENANCE_MODE = false
 
 export default function App() {
   const [view, setView] = useState<View>('dashboard')

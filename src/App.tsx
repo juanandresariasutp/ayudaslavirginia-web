@@ -39,7 +39,8 @@ import {
   InfoIcon,
   LogoutIcon,
   MapIcon,
-  RequestsIcon
+  RequestsIcon,
+  StatisticsIcon
 } from './components/common/Icons'
 import { RequestForm } from './components/requests/RequestForm'
 import { RequestDetailModal } from './components/requests/RequestDetailModal'
@@ -53,6 +54,7 @@ import { MapView } from './views/MapView'
 import { CollectionCentersPageView } from './views/CollectionCentersPageView'
 import { InformationView } from './views/InformationView'
 import { MaintenanceView } from './views/MaintenanceView'
+import { StatisticsView } from './views/StatisticsView'
 
 const MAINTENANCE_MODE = false
 
@@ -323,6 +325,15 @@ export default function App() {
             <InfoIcon />
             <span>Información</span>
           </button>
+          {session && adminProfile && (
+            <button
+              className={view === 'estadisticas' ? 'active' : ''}
+              onClick={() => navigate('estadisticas')}
+            >
+              <StatisticsIcon />
+              <span>Estadísticas</span>
+            </button>
+          )}
         </nav>
         <div className="sidebar-bottom">
           {session && adminProfile ? (
@@ -397,6 +408,10 @@ export default function App() {
 
         {view === 'informacion' && <InformationView requestHelp={() => setShowForm(true)} />}
 
+        {view === 'estadisticas' && session && adminProfile && (
+          <StatisticsView requests={requests} changes={changes} role={adminProfile.role} />
+        )}
+
         {view === 'admin' && session && adminProfile && (
           <AdminPanel
             requests={requests}
@@ -414,7 +429,7 @@ export default function App() {
         )}
       </main>
 
-      {view !== 'admin' && (
+      {view !== 'admin' && view !== 'estadisticas' && (
         <button className="floating-help" onClick={() => setShowForm(true)}>
           ＋ <span>Solicitar ayuda</span>
         </button>

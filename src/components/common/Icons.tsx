@@ -108,6 +108,28 @@ export function AdminIcon({ className = '', size = 20 }: IconProps) {
   )
 }
 
+export function StatisticsIcon({ className = '', size = 20 }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={`nav-icon ${className}`.trim()}
+      aria-hidden="true"
+    >
+      <path d="M4 20V10" />
+      <path d="M10 20V4" />
+      <path d="M16 20v-7" />
+      <path d="M22 20H2" />
+    </svg>
+  )
+}
+
 export function LogoutIcon({ className = '', size = 20 }: IconProps) {
   return (
     <svg

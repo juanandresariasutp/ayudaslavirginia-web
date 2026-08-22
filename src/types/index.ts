@@ -18,7 +18,7 @@ export type DocumentType =
   | 'Pasaporte' 
   | 'Permiso por protección temporal'
 
-export type View = 'dashboard' | 'mapa' | 'acopios' | 'informacion' | 'admin'
+export type View = 'dashboard' | 'mapa' | 'acopios' | 'informacion' | 'estadisticas' | 'admin'
 export type Sort = 'priority' | 'recent' | 'oldest'
 
 export interface Location {

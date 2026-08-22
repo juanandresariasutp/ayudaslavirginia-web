@@ -1,10 +1,13 @@
-import { type CSSProperties, useMemo, useState } from "react";
+import { type CSSProperties, useEffect, useMemo, useState } from "react";
 import { categories, priorities } from "../config/constants";
+import { detectSimilarRequests } from "../lib/supabase";
 import type {
   Category,
   ChangeRequest,
   HelpRequest,
   Priority,
+  Session,
+  SimilarRequestGroup,
   Status,
 } from "../types";
 import { displayRequestCode, requestCalendarDate } from "../utils/formatters";
@@ -13,6 +16,7 @@ interface StatisticsViewProps {
   requests: HelpRequest[];
   changes: ChangeRequest[];
   role: "admin" | "superadmin";
+  session: Session;
 }
 
 interface ChartItem {
@@ -58,12 +62,43 @@ export function StatisticsView({
   requests,
   changes,
   role,
+  session,
 }: StatisticsViewProps) {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [category, setCategory] = useState<"Todas" | Category>("Todas");
   const [priority, setPriority] = useState<"Todas" | Priority>("Todas");
   const [status, setStatus] = useState<"Todos" | Status>("Todos");
+  const [similarGroups, setSimilarGroups] = useState<SimilarRequestGroup[]>([]);
+  const [similarLoading, setSimilarLoading] = useState(true);
+  const [similarError, setSimilarError] = useState("");
+  const [detectorRefresh, setDetectorRefresh] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    setSimilarLoading(true);
+    setSimilarError("");
+    detectSimilarRequests(session)
+      .then((groups) => {
+        if (active) setSimilarGroups(groups);
+      })
+      .catch((error) => {
+        if (active) {
+          setSimilarGroups([]);
+          setSimilarError(
+            error instanceof Error
+              ? error.message
+              : "No fue posible analizar las solicitudes.",
+          );
+        }
+      })
+      .finally(() => {
+        if (active) setSimilarLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [detectorRefresh, session]);
 
   const filteredRequests = useMemo(
     () =>
@@ -260,6 +295,87 @@ export function StatisticsView({
           <small>Por revisar</small>
         </article>
       </div>
+
+      <section className="similar-detector" aria-labelledby="similar-title">
+        <header>
+          <div>
+            <span className="eyebrow">CONTROL DE DUPLICADOS</span>
+            <h3 id="similar-title">Detector de solicitudes similares</h3>
+            <p>
+              Identifica coincidencias exactas por cédula o teléfono. Los datos
+              sensibles permanecen enmascarados.
+            </p>
+          </div>
+          <div className="similar-header-actions">
+            <span className="similar-summary">
+              <b>{similarGroups.length}</b>
+              grupos detectados
+            </span>
+            <button
+              type="button"
+              className="secondary"
+              disabled={similarLoading}
+              onClick={() => setDetectorRefresh((value) => value + 1)}
+            >
+              {similarLoading ? "Analizando…" : "Actualizar análisis"}
+            </button>
+          </div>
+        </header>
+
+        {similarLoading && (
+          <p className="statistics-empty">Analizando coincidencias…</p>
+        )}
+        {!similarLoading && similarError && (
+          <p className="similar-error">{similarError}</p>
+        )}
+        {!similarLoading && !similarError && !similarGroups.length && (
+          <p className="statistics-empty">
+            No se encontraron cédulas ni teléfonos repetidos.
+          </p>
+        )}
+        {!similarLoading && !similarError && similarGroups.length > 0 && (
+          <div className="similar-groups">
+            {similarGroups.map((group) => (
+              <article
+                key={`${group.matchType}-${group.maskedValue}`}
+                className="similar-group"
+              >
+                <div className="similar-group-heading">
+                  <span
+                    className={`similar-match similar-match-${group.matchType}`}
+                  >
+                    {group.matchType === "document"
+                      ? "Misma cédula"
+                      : "Mismo teléfono"}
+                  </span>
+                  <b>{group.maskedValue}</b>
+                  <small>{group.requestCount} solicitudes</small>
+                </div>
+                <div className="similar-request-list">
+                  {group.requests.map((request) => (
+                    <div key={request.id}>
+                      <span>
+                        <b>{request.publicCode}</b>
+                        <small>
+                          {request.neighborhood} · {request.category}
+                        </small>
+                      </span>
+                      <span>
+                        <i>{request.status}</i>
+                        <small>
+                          {new Date(request.createdAt).toLocaleDateString(
+                            "es-CO",
+                          )}
+                        </small>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
 
       <div className="statistics-grid">
         <article className="statistics-card status-chart-card">

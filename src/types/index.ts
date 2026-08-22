@@ -109,3 +109,19 @@ export interface ImagePreview {
   url: string;
   alt: string;
 }
+
+export interface SimilarRequestItem {
+  id: string;
+  publicCode: string;
+  neighborhood: string;
+  category: Category;
+  status: Status;
+  createdAt: string;
+}
+
+export interface SimilarRequestGroup {
+  matchType: "document" | "phone";
+  maskedValue: string;
+  requestCount: number;
+  requests: SimilarRequestItem[];
+}

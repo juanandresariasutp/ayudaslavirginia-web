@@ -445,6 +445,7 @@ export default function App() {
             requests={requests}
             changes={changes}
             role={adminProfile.role}
+            session={session}
           />
         )}
 

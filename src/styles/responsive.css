@@ -1,0 +1,95 @@
+.menu-toggle, .sidebar-close, .sidebar-overlay { display: none; }
+@media (max-width: 900px) {
+  .menu-toggle { position: fixed; z-index: 8; top: max(12px, env(safe-area-inset-top)); right: max(14px, env(safe-area-inset-right)); flex: none; display: grid; gap: 4px; width: 44px; height: 44px; place-content: center; border: 0; border-radius: 11px; background: #073f2b; box-shadow: 0 5px 18px #17352b35; }
+  .page-header { padding-right: 58px; }
+  .menu-toggle span { display: block; width: 21px; height: 2px; border-radius: 2px; background: white; }
+  .sidebar-overlay { position: fixed; z-index: 9; inset: 0; display: block; border: 0; background: #0c261e99; }
+  .sidebar { z-index: 10; inset: 0 auto 0 0; width: min(310px, 86vw); height: 100dvh; padding: 26px 20px; transform: translateX(-105%); transition: transform .22s ease; box-shadow: 10px 0 32px #071d1640; }
+  .sidebar.mobile-open { transform: translateX(0); }
+  .sidebar .logo { display: flex; }
+  .sidebar nav { display: grid; grid-template-columns: 1fr; gap: 6px; margin-top: 46px; }
+  .sidebar nav button { flex-direction: row; align-items: center; gap: 12px; padding: 13px 14px; font-size: 14px; }
+  .sidebar-close { position: absolute; display: block; top: 15px; right: 15px; border: 0; background: transparent; color: white; font-size: 29px; }
+  .sidebar-bottom { position: static; z-index: auto; margin-top: auto; gap: 6px; }
+  .sidebar-bottom button { width: 100%; height: auto; padding: 12px 14px; background: transparent; font-size: 14px; text-align: left; }
+  .sidebar-bottom button span { width: 25px; font-size: 17px; }
+  .sidebar-bottom small { display: block; }
+  main { padding-top: 24px; padding-bottom: 70px; }
+  .floating-help { bottom: 20px; }
+}
+
+/* Modales estables en Safari/Chrome móvil con barras dinámicas. */
+body:has(.modal-backdrop) { overflow: hidden; }
+.modal-backdrop { width: 100%; height: 100vh; height: 100dvh; max-height: 100dvh; overflow: hidden; }
+.modal { max-height: calc(100dvh - 48px); overscroll-behavior: contain; -webkit-overflow-scrolling: touch; scrollbar-gutter: stable; }
+.modal form { padding-bottom: max(4px, env(safe-area-inset-bottom)); }
+
+@media (max-width: 620px) {
+  .modal-backdrop { display: flex; align-items: stretch; justify-content: center; padding: max(6px, env(safe-area-inset-top)) 6px max(6px, env(safe-area-inset-bottom)); }
+  .modal { flex: 1 1 auto; width: 100%; min-height: 0; max-height: none; padding: 28px 16px 24px; border-radius: 16px; }
+  .modal > .close { top: 8px; right: 10px; width: 40px; height: 40px; z-index: 2; }
+  .modal form { gap: 15px; padding-bottom: max(18px, env(safe-area-inset-bottom)); }
+  .modal .form-actions { flex-direction: column-reverse; align-items: stretch; padding-top: 4px; }
+  .modal .form-actions button { width: 100%; min-height: 46px; }
+}
+
+@media (max-height: 700px) {
+  .modal-backdrop { padding-top: max(6px, env(safe-area-inset-top)); padding-bottom: max(6px, env(safe-area-inset-bottom)); }
+  .modal { max-height: calc(100dvh - 12px); padding-top: 24px; padding-bottom: 20px; }
+}
+
+/* Evita el zoom automático de Safari al enfocar formularios móviles. */
+@media (max-width: 900px) {
+  html { -webkit-text-size-adjust: 100%; }
+  input, select, textarea { font-size: 16px !important; touch-action: manipulation; }
+  input[type="checkbox"], input[type="radio"], input[type="file"] { font-size: initial !important; }
+}
+
+/* Ventanas del mapa compactas para conservar contexto visual en móviles. */
+@media (max-width: 620px) {
+  .leaflet-map .leaflet-popup { max-width: calc(100vw - 42px); }
+  .leaflet-map .leaflet-popup-content-wrapper { border-radius: 12px; }
+  .leaflet-map .leaflet-popup-content {
+    width: min(270px, calc(100vw - 72px)) !important;
+    max-height: min(52dvh, 275px);
+    margin: 10px 12px 11px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    font-size: 12px;
+    line-height: 1.3;
+  }
+  .leaflet-map .leaflet-popup-close-button {
+    width: 30px;
+    height: 30px;
+    padding: 5px 6px 0 0;
+    font-size: 20px;
+  }
+  .map-popup-list {
+    max-height: 158px;
+    margin: 5px 0 7px;
+  }
+  .map-popup-list li {
+    margin-bottom: 5px;
+    padding: 7px;
+    border-radius: 7px;
+  }
+  .map-popup-request-heading { gap: 6px; }
+  .map-popup-request-heading strong { font-size: 12px; }
+  .map-popup-status { margin-top: 1px; font-size: 10px; }
+  .map-popup-list p {
+    display: -webkit-box;
+    margin-top: 3px;
+    overflow: hidden;
+    font-size: 11px;
+    line-height: 1.3;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+  }
+  .map-priority { padding: 2px 6px; font-size: 9px; }
+  .map-popup-contact { gap: 1px; margin-top: 4px; font-size: 10px; }
+  .map-report-action { min-height: 34px; margin-top: 5px; padding: 5px 8px; font-size: 10px; }
+  .map-directions { min-height: 36px; padding: 8px 10px; font-size: 12px; }
+  .collection-popup p { margin: 3px 0; }
+}
+

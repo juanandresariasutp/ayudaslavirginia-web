@@ -1,0 +1,51 @@
+.privacy-consent-backdrop { z-index: 20; }.privacy-consent-modal { width: min(780px, 100%); }.privacy-copy { max-height: 48vh; overflow: auto; margin: 18px 0; padding: 16px 18px; border: 1px solid #dce6df; border-radius: 12px; background: #f8faf8; color: #4f625a; font-size: 13px; line-height: 1.55; }.privacy-copy > p:first-child { margin-top: 0; }.privacy-copy section { margin-top: 18px; }.privacy-copy h3 { margin: 0 0 5px; color: #17352b; font-size: 14px; }.privacy-copy p, .privacy-copy ul { margin: 5px 0 0; }.privacy-copy ul { padding-left: 20px; }.privacy-copy a { color: #087a4b; font-weight: 700; }.privacy-note { padding: 11px; border-left: 3px solid #087a4b; background: #eaf5ee; }.privacy-checks { display: grid; gap: 10px; }.privacy-checks .consent { align-items: flex-start; padding: 12px; border: 1px solid #dce6df; border-radius: 10px; background: white; line-height: 1.4; }.privacy-checks input { margin-top: 3px; }.privacy-consent-modal .detail-actions { position: sticky; bottom: -30px; padding: 14px 0 0; background: white; }
+.validated-field small { color: #68776f; font-weight: 500; }.validated-field:has(input:user-invalid) small { color: #b42323; }.modal input:user-invalid, .modal textarea:user-invalid, .admin-create input:user-invalid { border-color: #d32626; background: #fff8f8; outline-color: #d32626; }.modal input:user-valid:not(:placeholder-shown), .admin-create input:user-valid:not(:placeholder-shown) { border-color: #2b8a5c; background: #f8fdf9; }
+.password-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+}
+.password-field input {
+  width: 100%;
+  padding-right: 42px !important;
+}
+.password-field button {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #556c61;
+  cursor: pointer;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+.password-field button:hover,
+.password-field button:focus-visible {
+  color: #087a4b;
+  background: #edf6f1;
+  outline: none;
+}
+.password-field .eye-icon {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+.admin-create .password-field {
+  width: 100%;
+}
+.admin-create .password-field input {
+  height: 44px;
+}
+.information-page { padding-top: 8px; }.information-layout { display: grid; grid-template-columns: minmax(280px, 390px) 1fr; gap: 24px; align-items: start; }.tutorial-video-card, .user-manual { padding: 20px; border: 1px solid #dce6df; border-radius: 16px; background: white; }.vertical-video { width: min(100%, 340px); aspect-ratio: 9 / 16; margin: 0 auto 18px; overflow: hidden; border-radius: 18px; background: #0b291f; box-shadow: 0 12px 30px #17352b24; }.vertical-video video { display: block; width: 100%; height: 100%; object-fit: contain; background: #071b15; }.video-placeholder { height: 100%; display: grid; place-content: center; justify-items: center; padding: 28px; color: white; text-align: center; }.video-placeholder > span { width: 62px; height: 62px; display: grid; place-items: center; margin-bottom: 16px; border-radius: 50%; color: #17352b; background: #f4c542; font-size: 25px; }.video-placeholder p { margin: 7px 0 0; color: #bfd6cc; font-size: 13px; }.tutorial-video-card h3, .user-manual h3 { margin: 7px 0; font: 800 21px Manrope, sans-serif; }.tutorial-video-card > div:last-child > p { margin: 0; color: #6b7972; line-height: 1.5; }.user-manual ol { display: grid; gap: 11px; margin: 20px 0; padding: 0; list-style: none; }.user-manual li { display: grid; grid-template-columns: 36px 1fr; gap: 12px; padding: 12px; border-radius: 11px; background: #f6f9f6; }.user-manual li > span { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 10px; color: white; background: #087a4b; font-weight: 800; }.user-manual li p { margin: 3px 0 0; color: #68776f; font-size: 13px; line-height: 1.45; }.manual-action { width: 100%; }.information-tip { margin-top: 22px; padding: 16px 18px; border-left: 4px solid #f4c542; border-radius: 10px; background: #fff9df; }.information-tip p { margin: 5px 0 0; color: #626e68; line-height: 1.5; }
+@media (max-width: 800px) { .information-layout { grid-template-columns: 1fr; }.tutorial-video-card { text-align: center; }.vertical-video { width: min(100%, 320px); }.user-manual { padding: 17px; } }
+@media (max-width: 620px) { .privacy-copy { max-height: 43vh; padding: 13px; }.privacy-consent-modal .detail-actions { flex-direction: column-reverse; }.privacy-consent-modal .detail-actions button { width: 100%; } }
+@media (max-width: 620px) { .detail-grid, .detail-media { grid-template-columns: 1fr; }.detail-media .signature-preview { grid-column: auto; }.detail-media img { height: 210px; }.detail-status { align-items: flex-start; flex-wrap: wrap; }.detail-status > span:last-child { margin-left: 0; width: 100%; } }

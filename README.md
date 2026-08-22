@@ -12,7 +12,7 @@ Aplicación web para registrar, visualizar y administrar solicitudes de ayuda en
 - Mapa que agrupa solicitudes ubicadas en el mismo punto.
 - Inicio de sesión exclusivo para administradores.
 - Aprobación o rechazo administrativo de cambios de estado.
-- Panel privado de estadísticas con filtros, gráficos operativos, tiempos de atención y actividad administrativa.
+- Panel privado de estadísticas con filtros, gráficos operativos, detección de solicitudes repetidas y actividad administrativa.
 - CRUD completo para el rol `superadmin`.
 - Diseño responsive con menú hamburguesa en dispositivos móviles.
 
@@ -129,11 +129,17 @@ Los roles `admin` y `superadmin` tienen acceso a una sección privada de estadí
 Incluye:
 
 - resumen de solicitudes, porcentaje completado y casos críticos activos;
-- aprobaciones pendientes y tiempos promedio de atención y revisión;
+- aprobaciones pendientes;
+- detector seguro de solicitudes con la misma cédula o teléfono;
 - distribución por estado, categoría, prioridad y barrio;
 - tendencia de solicitudes creadas por día;
 - listado de solicitudes críticas todavía activas;
 - actividad de aprobaciones y rechazos por administrador.
+
+El detector de similitudes se ejecuta en PostgreSQL mediante una función RPC
+restringida a administradores activos. Las cédulas se comparan dentro de la base
+de datos después de descifrarlas y la interfaz solo recibe identificadores
+enmascarados, los códigos públicos y datos operativos de las coincidencias.
 
 Al crear o modificar estilos, utiliza el módulo correspondiente y evita cambiar el orden de los imports en `styles.css` sin revisar posibles efectos sobre la cascada.
 

@@ -164,6 +164,30 @@ body:has(.modal-backdrop) {
     width: 100%;
     min-height: 46px;
   }
+  .request-modal {
+    overflow-x: hidden;
+  }
+  .request-modal form {
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .request-modal form > *,
+  .request-modal label,
+  .request-modal .wide,
+  .request-modal .neighborhood-autocomplete-field {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .request-modal input,
+  .request-modal select,
+  .request-modal textarea {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .request-modal input[type="file"] {
+    width: 100%;
+    overflow: hidden;
+  }
 }
 
 @media (max-height: 700px) {

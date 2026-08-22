@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import { initialAdmins, initialChanges, initialRequests } from './data'
+import { useEffect, useMemo, useState } from "react";
+import { initialAdmins, initialChanges, initialRequests } from "./data";
 import type {
   AdminUser,
   Category,
@@ -10,9 +10,14 @@ import type {
   Priority,
   Session,
   Sort,
-  View
-} from './types'
-import { PAGE_SIZE, categoryToDb, priorityToDb, priorityWeight } from './config/constants'
+  View,
+} from "./types";
+import {
+  PAGE_SIZE,
+  categoryToDb,
+  priorityToDb,
+  priorityWeight,
+} from "./config/constants";
 import {
   getAdminProfile,
   getCollectionCenters,
@@ -23,16 +28,16 @@ import {
   logout,
   savedSession,
   supabaseConfigured,
-  uploadEvidence
-} from './lib/supabase'
-import { requestCalendarDate, requestCodeNumber } from './utils/formatters'
-import { mapCollectionCenter, mapPublic } from './utils/mappers'
-import { requestSubmissionError } from './utils/validators'
+  uploadEvidence,
+} from "./lib/supabase";
+import { requestCalendarDate, requestCodeNumber } from "./utils/formatters";
+import { mapCollectionCenter, mapPublic } from "./utils/mappers";
+import { requestSubmissionError } from "./utils/validators";
 
 // UI Components
-import { LogoMark } from './components/common/LogoMark'
-import { Header } from './components/common/Header'
-import { ImageModal } from './components/common/ImageModal'
+import { LogoMark } from "./components/common/LogoMark";
+import { Header } from "./components/common/Header";
+import { ImageModal } from "./components/common/ImageModal";
 import {
   AdminIcon,
   CollectionCentersIcon,
@@ -40,170 +45,185 @@ import {
   LogoutIcon,
   MapIcon,
   RequestsIcon,
-  StatisticsIcon
-} from './components/common/Icons'
-import { RequestForm } from './components/requests/RequestForm'
-import { RequestDetailModal } from './components/requests/RequestDetailModal'
-import { StatusChangeFormModal } from './components/admin/StatusChangeFormModal'
-import { AdminLoginModal } from './components/admin/AdminLoginModal'
-import { AdminPanel } from './components/admin/AdminPanel'
+  StatisticsIcon,
+} from "./components/common/Icons";
+import { RequestForm } from "./components/requests/RequestForm";
+import { RequestDetailModal } from "./components/requests/RequestDetailModal";
+import { StatusChangeFormModal } from "./components/admin/StatusChangeFormModal";
+import { AdminLoginModal } from "./components/admin/AdminLoginModal";
+import { AdminPanel } from "./components/admin/AdminPanel";
 
 // Views
-import { DashboardView } from './views/DashboardView'
-import { MapView } from './views/MapView'
-import { CollectionCentersPageView } from './views/CollectionCentersPageView'
-import { InformationView } from './views/InformationView'
-import { MaintenanceView } from './views/MaintenanceView'
-import { StatisticsView } from './views/StatisticsView'
+import { DashboardView } from "./views/DashboardView";
+import { MapView } from "./views/MapView";
+import { CollectionCentersPageView } from "./views/CollectionCentersPageView";
+import { InformationView } from "./views/InformationView";
+import { MaintenanceView } from "./views/MaintenanceView";
+import { StatisticsView } from "./views/StatisticsView";
 
-const MAINTENANCE_MODE = false
+const MAINTENANCE_MODE = false;
 
 export default function App() {
-  const [view, setView] = useState<View>('dashboard')
-  const [requests, setRequests] = useState<HelpRequest[]>([])
+  const [view, setView] = useState<View>("dashboard");
+  const [requests, setRequests] = useState<HelpRequest[]>([]);
   const [completedMedia, setCompletedMedia] = useState<
     Record<string, { requestUrl?: string; solutionUrl?: string }>
-  >({})
-  const [imagePreview, setImagePreview] = useState<ImagePreview>()
-  const [centers, setCenters] = useState<CollectionCenter[]>([])
-  const [admins, setAdmins] = useState<AdminUser[]>(initialAdmins)
-  const [changes, setChanges] = useState<ChangeRequest[]>(initialChanges)
+  >({});
+  const [imagePreview, setImagePreview] = useState<ImagePreview>();
+  const [centers, setCenters] = useState<CollectionCenter[]>([]);
+  const [admins, setAdmins] = useState<AdminUser[]>(initialAdmins);
+  const [changes, setChanges] = useState<ChangeRequest[]>(initialChanges);
 
   // Filters & State
-  const [category, setCategory] = useState<'Todas' | Category>('Todas')
-  const [status, setStatus] = useState<'Activas' | import('./types').Status>('Activas')
-  const [sort, setSort] = useState<Sort>('priority')
-  const [requestSearch, setRequestSearch] = useState('')
-  const [requestDate, setRequestDate] = useState('')
-  const [mapCategory, setMapCategory] = useState<'Todas' | Category>('Todas')
-  const [mapPriority, setMapPriority] = useState<'Todas' | Priority>('Todas')
-  const [page, setPage] = useState(1)
+  const [category, setCategory] = useState<"Todas" | Category>("Todas");
+  const [status, setStatus] = useState<"Activas" | import("./types").Status>(
+    "Activas",
+  );
+  const [sort, setSort] = useState<Sort>("priority");
+  const [requestSearch, setRequestSearch] = useState("");
+  const [requestDate, setRequestDate] = useState("");
+  const [mapCategory, setMapCategory] = useState<"Todas" | Category>("Todas");
+  const [mapPriority, setMapPriority] = useState<"Todas" | Priority>("Todas");
+  const [page, setPage] = useState(1);
 
   // Modals & Navigation
-  const [showForm, setShowForm] = useState(false)
-  const [changeFor, setChangeFor] = useState<HelpRequest>()
-  const [detailFor, setDetailFor] = useState<HelpRequest>()
-  const [showLogin, setShowLogin] = useState(false)
-  const [mobileMenu, setMobileMenu] = useState(false)
-  const [session, setSession] = useState<Session | null>(savedSession())
+  const [showForm, setShowForm] = useState(false);
+  const [changeFor, setChangeFor] = useState<HelpRequest>();
+  const [detailFor, setDetailFor] = useState<HelpRequest>();
+  const [showLogin, setShowLogin] = useState(false);
+  const [mobileMenu, setMobileMenu] = useState(false);
+  const [session, setSession] = useState<Session | null>(savedSession());
   const [adminProfile, setAdminProfile] = useState<{
-    full_name: string
-    role: 'admin' | 'superadmin'
-  } | null>(null)
-  const [notice, setNotice] = useState('')
+    full_name: string;
+    role: "admin" | "superadmin";
+  } | null>(null);
+  const [notice, setNotice] = useState("");
 
   const ordered = useMemo(
     () =>
       requests
         .filter(
-          r =>
-            (!requestDate || requestCalendarDate(r.createdAt) === requestDate) &&
+          (r) =>
+            (!requestDate ||
+              requestCalendarDate(r.createdAt) === requestDate) &&
             (requestSearch
               ? requestCodeNumber(r) === String(Number(requestSearch))
-              : (category === 'Todas' || r.category === category) &&
-                (status === 'Activas' ? r.status !== 'Completada' : r.status === status))
+              : (category === "Todas" || r.category === category) &&
+                (status === "Activas"
+                  ? r.status !== "Completada"
+                  : r.status === status)),
         )
         .sort((a, b) => {
-          if (a.status === 'Completada' && b.status !== 'Completada') return 1
-          if (b.status === 'Completada' && a.status !== 'Completada') return -1
-          if (sort === 'priority')
+          if (a.status === "Completada" && b.status !== "Completada") return 1;
+          if (b.status === "Completada" && a.status !== "Completada") return -1;
+          if (sort === "priority")
             return (
               priorityWeight[a.priority] - priorityWeight[b.priority] ||
               +new Date(b.createdAt) - +new Date(a.createdAt)
-            )
-          return sort === 'oldest'
+            );
+          return sort === "oldest"
             ? +new Date(a.createdAt) - +new Date(b.createdAt)
-            : +new Date(b.createdAt) - +new Date(a.createdAt)
+            : +new Date(b.createdAt) - +new Date(a.createdAt);
         }),
-    [requests, category, status, sort, requestSearch, requestDate]
-  )
+    [requests, category, status, sort, requestSearch, requestDate],
+  );
 
   const mapRequests = useMemo(
     () =>
       requests.filter(
-        request =>
-          (mapCategory === 'Todas' || request.category === mapCategory) &&
-          (mapPriority === 'Todas' || request.priority === mapPriority)
+        (request) =>
+          (mapCategory === "Todas" || request.category === mapCategory) &&
+          (mapPriority === "Todas" || request.priority === mapPriority),
       ),
-    [requests, mapCategory, mapPriority]
-  )
+    [requests, mapCategory, mapPriority],
+  );
 
-  const pages = Math.max(1, Math.ceil(ordered.length / PAGE_SIZE))
-  const visible = ordered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+  const pages = Math.max(1, Math.ceil(ordered.length / PAGE_SIZE));
+  const visible = ordered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const visibleCompletedMediaKey = visible
-    .filter(request => request.status === 'Completada')
-    .map(request => request.id)
-    .join(',')
+    .filter((request) => request.status === "Completada")
+    .map((request) => request.id)
+    .join(",");
 
-  useEffect(() => setPage(1), [category, status, sort, requestSearch, requestDate])
+  useEffect(
+    () => setPage(1),
+    [category, status, sort, requestSearch, requestDate],
+  );
 
   useEffect(() => {
     if (!supabaseConfigured) {
-      setRequests(initialRequests)
-      return
+      setRequests(initialRequests);
+      return;
     }
     getPublicRequests()
-      .then(rows => setRequests(rows.map(mapPublic)))
-      .catch(() => setNotice('No fue posible cargar Supabase.'))
-  }, [])
+      .then((rows) => setRequests(rows.map(mapPublic)))
+      .catch(() => setNotice("No fue posible cargar Supabase."));
+  }, []);
 
   useEffect(() => {
     if (!supabaseConfigured || !visibleCompletedMediaKey) {
-      setCompletedMedia({})
-      return
+      setCompletedMedia({});
+      return;
     }
-    const visibleIds = new Set(visibleCompletedMediaKey.split(','))
+    const visibleIds = new Set(visibleCompletedMediaKey.split(","));
     getCompletedRequestMedia()
-      .then(async rows => {
+      .then(async (rows) => {
         const entries = await Promise.all(
           rows
-            .filter(row => visibleIds.has(row.request_id))
-            .map(async row => {
+            .filter((row) => visibleIds.has(row.request_id))
+            .map(async (row) => {
               const [requestUrl, solutionUrl] = await Promise.all([
                 row.request_photo_path
-                  ? getEvidenceUrl(undefined, row.request_photo_path).catch(() => '')
-                  : '',
+                  ? getEvidenceUrl(undefined, row.request_photo_path).catch(
+                      () => "",
+                    )
+                  : "",
                 row.solution_photo_path
-                  ? getEvidenceUrl(undefined, row.solution_photo_path).catch(() => '')
-                  : ''
-              ])
+                  ? getEvidenceUrl(undefined, row.solution_photo_path).catch(
+                      () => "",
+                    )
+                  : "",
+              ]);
               return [
                 row.request_id,
-                { requestUrl: requestUrl || undefined, solutionUrl: solutionUrl || undefined }
-              ] as const
-            })
-        )
-        setCompletedMedia(Object.fromEntries(entries))
+                {
+                  requestUrl: requestUrl || undefined,
+                  solutionUrl: solutionUrl || undefined,
+                },
+              ] as const;
+            }),
+        );
+        setCompletedMedia(Object.fromEntries(entries));
       })
-      .catch(() => undefined)
-  }, [visibleCompletedMediaKey])
+      .catch(() => undefined);
+  }, [visibleCompletedMediaKey]);
 
   useEffect(() => {
-    if (!supabaseConfigured) return
+    if (!supabaseConfigured) return;
     getCollectionCenters(session ?? undefined)
-      .then(rows => setCenters(rows.map(mapCollectionCenter)))
-      .catch(() => setNotice('No fue posible cargar los centros de acopio.'))
-  }, [session])
+      .then((rows) => setCenters(rows.map(mapCollectionCenter)))
+      .catch(() => setNotice("No fue posible cargar los centros de acopio."));
+  }, [session]);
 
   useEffect(() => {
-    if (!session) return
+    if (!session) return;
     getAdminProfile(session)
       .then(setAdminProfile)
       .catch(() => {
-        logout()
-        setSession(null)
-      })
-  }, [session])
+        logout();
+        setSession(null);
+      });
+  }, [session]);
 
   async function refresh() {
-    const rows = await getPublicRequests()
-    setRequests(rows.map(mapPublic))
+    const rows = await getPublicRequests();
+    setRequests(rows.map(mapPublic));
   }
 
   async function create(request: HelpRequest, photo?: File) {
     try {
-      const photoPath = photo ? await uploadEvidence('requests', photo) : null
-      const consentAt = new Date().toISOString()
+      const photoPath = photo ? await uploadEvidence("requests", photo) : null;
+      const consentAt = new Date().toISOString();
       await insertRequest({
         full_name: request.fullName,
         document_type: request.documentType,
@@ -218,38 +238,38 @@ export default function App() {
         exact_longitude: request.location?.longitude ?? null,
         request_photo_path: photoPath,
         privacy_consent_at: consentAt,
-        privacy_notice_version: '2026-08-16-v3',
+        privacy_notice_version: "2026-08-16-v3",
         human_confirmation_at: consentAt,
         public_contact_phone: request.phone,
         public_contact_address: request.address,
         public_contact_consent_at: consentAt,
-        public_contact_notice_version: '2026-08-16-v3'
-      })
-      await refresh()
-      setShowForm(false)
-      setNotice('Solicitud enviada correctamente.')
+        public_contact_notice_version: "2026-08-16-v3",
+      });
+      await refresh();
+      setShowForm(false);
+      setNotice("Solicitud enviada correctamente.");
     } catch (error) {
-      alert(requestSubmissionError(error))
+      alert(requestSubmissionError(error));
     }
   }
 
   function navigate(next: View) {
-    setView(next)
-    setMobileMenu(false)
+    setView(next);
+    setMobileMenu(false);
   }
 
   function openAdmin() {
-    setMobileMenu(false)
-    if (session && adminProfile) setView('admin')
-    else setShowLogin(true)
+    setMobileMenu(false);
+    if (session && adminProfile) setView("admin");
+    else setShowLogin(true);
   }
 
   function closeSession() {
-    logout()
-    setSession(null)
-    setAdminProfile(null)
-    setView('dashboard')
-    setMobileMenu(false)
+    logout();
+    setSession(null);
+    setAdminProfile(null);
+    setView("dashboard");
+    setMobileMenu(false);
   }
 
   if (MAINTENANCE_MODE && !(session && adminProfile)) {
@@ -260,15 +280,15 @@ export default function App() {
           <AdminLoginModal
             close={() => setShowLogin(false)}
             success={(nextSession, profile) => {
-              setSession(nextSession)
-              setAdminProfile(profile)
-              setShowLogin(false)
-              setView('admin')
+              setSession(nextSession);
+              setAdminProfile(profile);
+              setShowLogin(false);
+              setView("admin");
             }}
           />
         )}
       </>
-    )
+    );
   }
 
   return (
@@ -280,7 +300,10 @@ export default function App() {
           onClick={() => setMobileMenu(false)}
         />
       )}
-      <aside id="main-sidebar" className={`sidebar ${mobileMenu ? 'mobile-open' : ''}`}>
+      <aside
+        id="main-sidebar"
+        className={`sidebar ${mobileMenu ? "mobile-open" : ""}`}
+      >
         <button
           className="sidebar-close"
           aria-label="Cerrar menú"
@@ -288,7 +311,11 @@ export default function App() {
         >
           ×
         </button>
-        <a className="logo" href="#dashboard" onClick={() => navigate('dashboard')}>
+        <a
+          className="logo"
+          href="#dashboard"
+          onClick={() => navigate("dashboard")}
+        >
           <LogoMark />
           <b>
             Ayudas
@@ -298,37 +325,37 @@ export default function App() {
         </a>
         <nav>
           <button
-            className={view === 'dashboard' ? 'active' : ''}
-            onClick={() => navigate('dashboard')}
+            className={view === "dashboard" ? "active" : ""}
+            onClick={() => navigate("dashboard")}
           >
             <RequestsIcon />
             <span>Solicitudes</span>
           </button>
           <button
-            className={view === 'mapa' ? 'active' : ''}
-            onClick={() => navigate('mapa')}
+            className={view === "mapa" ? "active" : ""}
+            onClick={() => navigate("mapa")}
           >
             <MapIcon />
             <span>Mapa</span>
           </button>
           <button
-            className={view === 'acopios' ? 'active' : ''}
-            onClick={() => navigate('acopios')}
+            className={view === "acopios" ? "active" : ""}
+            onClick={() => navigate("acopios")}
           >
             <CollectionCentersIcon />
             <span>Centros de Acopio</span>
           </button>
           <button
-            className={view === 'informacion' ? 'active' : ''}
-            onClick={() => navigate('informacion')}
+            className={view === "informacion" ? "active" : ""}
+            onClick={() => navigate("informacion")}
           >
             <InfoIcon />
             <span>Información</span>
           </button>
           {session && adminProfile && (
             <button
-              className={view === 'estadisticas' ? 'active' : ''}
-              onClick={() => navigate('estadisticas')}
+              className={view === "estadisticas" ? "active" : ""}
+              onClick={() => navigate("estadisticas")}
             >
               <StatisticsIcon />
               <span>Estadísticas</span>
@@ -339,8 +366,8 @@ export default function App() {
           {session && adminProfile ? (
             <>
               <button
-                className={view === 'admin' ? 'active' : ''}
-                onClick={() => navigate('admin')}
+                className={view === "admin" ? "active" : ""}
+                onClick={() => navigate("admin")}
               >
                 <AdminIcon />
                 <span>Administración</span>
@@ -363,10 +390,13 @@ export default function App() {
       </aside>
 
       <main>
-        <Header menuOpen={mobileMenu} toggleMenu={() => setMobileMenu(open => !open)} />
+        <Header
+          menuOpen={mobileMenu}
+          toggleMenu={() => setMobileMenu((open) => !open)}
+        />
         {notice && <div className="notice">{notice}</div>}
 
-        {view === 'dashboard' && (
+        {view === "dashboard" && (
           <DashboardView
             requests={requests}
             ordered={ordered}
@@ -392,7 +422,7 @@ export default function App() {
           />
         )}
 
-        {view === 'mapa' && (
+        {view === "mapa" && (
           <MapView
             mapRequests={mapRequests}
             mapCategory={mapCategory}
@@ -404,15 +434,21 @@ export default function App() {
           />
         )}
 
-        {view === 'acopios' && <CollectionCentersPageView centers={centers} />}
+        {view === "acopios" && <CollectionCentersPageView centers={centers} />}
 
-        {view === 'informacion' && <InformationView requestHelp={() => setShowForm(true)} />}
-
-        {view === 'estadisticas' && session && adminProfile && (
-          <StatisticsView requests={requests} changes={changes} role={adminProfile.role} />
+        {view === "informacion" && (
+          <InformationView requestHelp={() => setShowForm(true)} />
         )}
 
-        {view === 'admin' && session && adminProfile && (
+        {view === "estadisticas" && session && adminProfile && (
+          <StatisticsView
+            requests={requests}
+            changes={changes}
+            role={adminProfile.role}
+          />
+        )}
+
+        {view === "admin" && session && adminProfile && (
           <AdminPanel
             requests={requests}
             admins={admins}
@@ -429,19 +465,21 @@ export default function App() {
         )}
       </main>
 
-      {view !== 'admin' && view !== 'estadisticas' && (
+      {view !== "admin" && view !== "estadisticas" && (
         <button className="floating-help" onClick={() => setShowForm(true)}>
           ＋ <span>Solicitar ayuda</span>
         </button>
       )}
 
-      {showForm && <RequestForm close={() => setShowForm(false)} create={create} />}
+      {showForm && (
+        <RequestForm close={() => setShowForm(false)} create={create} />
+      )}
 
       {changeFor && (
         <StatusChangeFormModal
           request={changeFor}
           close={() => setChangeFor(undefined)}
-          sent={() => setNotice('Cambio enviado para revisión administrativa.')}
+          sent={() => setNotice("Cambio enviado para revisión administrativa.")}
         />
       )}
 
@@ -455,20 +493,23 @@ export default function App() {
       )}
 
       {imagePreview && (
-        <ImageModal image={imagePreview} close={() => setImagePreview(undefined)} />
+        <ImageModal
+          image={imagePreview}
+          close={() => setImagePreview(undefined)}
+        />
       )}
 
       {showLogin && (
         <AdminLoginModal
           close={() => setShowLogin(false)}
           success={(nextSession, profile) => {
-            setSession(nextSession)
-            setAdminProfile(profile)
-            setShowLogin(false)
-            setView('admin')
+            setSession(nextSession);
+            setAdminProfile(profile);
+            setShowLogin(false);
+            setView("admin");
           }}
         />
       )}
     </div>
-  )
+  );
 }

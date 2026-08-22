@@ -1,9 +1,9 @@
 interface IconProps {
-  className?: string
-  size?: number
+  className?: string;
+  size?: number;
 }
 
-export function RequestsIcon({ className = '', size = 20 }: IconProps) {
+export function RequestsIcon({ className = "", size = 20 }: IconProps) {
   return (
     <svg
       width={size}
@@ -22,10 +22,10 @@ export function RequestsIcon({ className = '', size = 20 }: IconProps) {
       <line x1="7" y1="12" x2="17" y2="12" />
       <line x1="7" y1="16" x2="13" y2="16" />
     </svg>
-  )
+  );
 }
 
-export function MapIcon({ className = '', size = 20 }: IconProps) {
+export function MapIcon({ className = "", size = 20 }: IconProps) {
   return (
     <svg
       width={size}
@@ -43,10 +43,13 @@ export function MapIcon({ className = '', size = 20 }: IconProps) {
       <line x1="9" y1="3" x2="9" y2="18" />
       <line x1="15" y1="6" x2="15" y2="21" />
     </svg>
-  )
+  );
 }
 
-export function CollectionCentersIcon({ className = '', size = 20 }: IconProps) {
+export function CollectionCentersIcon({
+  className = "",
+  size = 20,
+}: IconProps) {
   return (
     <svg
       width={size}
@@ -64,10 +67,10 @@ export function CollectionCentersIcon({ className = '', size = 20 }: IconProps) 
       <path d="m3.3 7 8.7 5 8.7-5" />
       <path d="M12 22V12" />
     </svg>
-  )
+  );
 }
 
-export function InfoIcon({ className = '', size = 20 }: IconProps) {
+export function InfoIcon({ className = "", size = 20 }: IconProps) {
   return (
     <svg
       width={size}
@@ -85,10 +88,10 @@ export function InfoIcon({ className = '', size = 20 }: IconProps) {
       <line x1="12" y1="16" x2="12" y2="12" />
       <line x1="12" y1="8" x2="12.01" y2="8" />
     </svg>
-  )
+  );
 }
 
-export function AdminIcon({ className = '', size = 20 }: IconProps) {
+export function AdminIcon({ className = "", size = 20 }: IconProps) {
   return (
     <svg
       width={size}
@@ -105,10 +108,10 @@ export function AdminIcon({ className = '', size = 20 }: IconProps) {
       <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
       <path d="m9 12 2 2 4-4" />
     </svg>
-  )
+  );
 }
 
-export function StatisticsIcon({ className = '', size = 20 }: IconProps) {
+export function StatisticsIcon({ className = "", size = 20 }: IconProps) {
   return (
     <svg
       width={size}
@@ -127,10 +130,10 @@ export function StatisticsIcon({ className = '', size = 20 }: IconProps) {
       <path d="M16 20v-7" />
       <path d="M22 20H2" />
     </svg>
-  )
+  );
 }
 
-export function LogoutIcon({ className = '', size = 20 }: IconProps) {
+export function LogoutIcon({ className = "", size = 20 }: IconProps) {
   return (
     <svg
       width={size}
@@ -148,5 +151,5 @@ export function LogoutIcon({ className = '', size = 20 }: IconProps) {
       <polyline points="16 17 21 12 16 7" />
       <line x1="21" y1="12" x2="9" y2="12" />
     </svg>
-  )
+  );
 }

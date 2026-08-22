@@ -31,7 +31,7 @@ Los datos públicos están separados de la información privada. El número de d
 - Vite.
 - Supabase PostgreSQL, Auth, Storage y RPC.
 - Leaflet y OpenStreetMap.
-- CSS responsive.
+- CSS modular y responsive.
 - Vercel para el frontend.
 
 ## Estructura
@@ -41,7 +41,15 @@ Los datos públicos están separados de la información privada. El número de d
 ├── src/
 │   ├── App.tsx
 │   ├── main.tsx
-│   ├── styles.css
+│   ├── styles.css                 # Punto de entrada de los estilos
+│   ├── styles/
+│   │   ├── administration.css     # Panel administrativo y gestión
+│   │   ├── autocomplete.css       # Sugerencias y autocompletado
+│   │   ├── base.css               # Variables y estilos globales
+│   │   ├── features.css           # Funcionalidades complementarias
+│   │   ├── maintenance.css        # Pantalla de mantenimiento
+│   │   ├── public-flow.css        # Solicitudes y flujo público
+│   │   └── responsive.css         # Adaptaciones para móvil y tablet
 │   ├── data.ts
 │   ├── vite-env.d.ts
 │   ├── components/
@@ -86,6 +94,7 @@ Los datos públicos están separados de la información privada. El número de d
 │       ├── CollectionCentersPageView.tsx
 │       ├── DashboardView.tsx
 │       ├── InformationView.tsx
+│       ├── MaintenanceView.tsx
 │       └── MapView.tsx
 ├── supabase/
 │   └── migrations/
@@ -96,6 +105,20 @@ Los datos públicos están separados de la información privada. El número de d
 ├── tsconfig.json
 └── vite.config.ts
 ```
+
+## Organización de estilos
+
+`src/styles.css` es el único punto de entrada del CSS y carga los módulos ubicados en `src/styles/`. Los imports conservan un orden definido para mantener correctamente la cascada:
+
+1. `base.css`: variables, normalización, estructura general y componentes base.
+2. `public-flow.css`: dashboard público, solicitudes, filtros, mapas y formularios.
+3. `maintenance.css`: pantalla temporal de mantenimiento y acceso administrativo.
+4. `administration.css`: panel administrativo, CRUD, aprobaciones, evidencias y centros de acopio.
+5. `features.css`: privacidad, validaciones, contraseñas y sección informativa.
+6. `responsive.css`: menú móvil, modales, mapas y ajustes para tablet y celular.
+7. `autocomplete.css`: presentación del listado de sugerencias de barrios.
+
+Al crear o modificar estilos, utiliza el módulo correspondiente y evita cambiar el orden de los imports en `styles.css` sin revisar posibles efectos sobre la cascada.
 
 ## Ejecución local
 

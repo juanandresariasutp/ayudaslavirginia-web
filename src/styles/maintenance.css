@@ -1,0 +1,118 @@
+/* Modo de mantenimiento público */
+.maintenance-page {
+  width: 100%;
+  max-width: none;
+  min-height: 100dvh;
+  margin: 0;
+  display: grid;
+  place-items: center;
+  padding: 28px;
+  background: radial-gradient(
+    circle at top,
+    #edf8f1 0,
+    #f7faf7 45%,
+    #edf3ef 100%
+  );
+}
+.maintenance-card {
+  width: min(620px, 100%);
+  padding: 42px;
+  border: 1px solid #d7e4da;
+  border-radius: 24px;
+  background: #fff;
+  box-shadow: 0 24px 70px #17352b1f;
+  text-align: center;
+}
+.maintenance-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 13px;
+  margin-bottom: 38px;
+  text-align: left;
+}
+.maintenance-brand .brand-mark {
+  width: 52px;
+  height: 52px;
+}
+.maintenance-brand div {
+  display: grid;
+  gap: 2px;
+}
+.maintenance-brand strong {
+  color: #17352b;
+  font-size: 20px;
+}
+.maintenance-brand span {
+  color: #74817b;
+  font-size: 13px;
+}
+.maintenance-code {
+  display: inline-block;
+  margin-bottom: 14px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  color: #087a4b;
+  background: #e3f3e9;
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+.maintenance-eyebrow {
+  margin: 0 0 10px;
+  color: #087a4b;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+}
+.maintenance-card h1 {
+  max-width: 520px;
+  margin: 0 auto;
+  color: #17352b;
+  font-size: clamp(30px, 5vw, 46px);
+  line-height: 1.08;
+}
+.maintenance-message {
+  max-width: 470px;
+  margin: 20px auto 30px;
+  color: #68766f;
+  font-size: 17px;
+  line-height: 1.6;
+}
+.maintenance-admin-button {
+  border: 0;
+  border-radius: 11px;
+  padding: 13px 19px;
+  color: white;
+  background: #087a4b;
+  font-weight: 800;
+  box-shadow: 0 9px 24px #087a4b35;
+}
+.maintenance-admin-button:hover,
+.maintenance-admin-button:focus-visible {
+  background: #06683f;
+  outline: 3px solid #087a4b2e;
+}
+@media (max-width: 620px) {
+  .maintenance-page {
+    padding: 16px;
+  }
+  .maintenance-card {
+    padding: 30px 20px;
+    border-radius: 19px;
+  }
+  .maintenance-brand {
+    margin-bottom: 30px;
+  }
+  .maintenance-card h1 {
+    font-size: 32px;
+  }
+  .maintenance-message {
+    font-size: 16px;
+  }
+  .maintenance-admin-button {
+    width: 100%;
+    min-height: 48px;
+    font-size: 16px;
+  }
+}

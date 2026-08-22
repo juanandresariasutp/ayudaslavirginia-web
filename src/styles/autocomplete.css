@@ -1,0 +1,73 @@
+/* Popover de sugerencias estilo Tooltip Oscuro con Flecha */
+.neighborhood-autocomplete-field {
+  position: relative;
+  width: 100%;
+}
+
+.neighborhood-tooltip-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 16px;
+  z-index: 50;
+  min-width: 220px;
+  max-width: 320px;
+  background: #212529;
+  border-radius: 9px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  padding: 6px;
+  animation: fadeInTooltip 0.15s ease-out;
+}
+
+.neighborhood-tooltip-popover .tooltip-arrow {
+  position: absolute;
+  top: -5px;
+  left: 20px;
+  width: 10px;
+  height: 10px;
+  background: #212529;
+  transform: rotate(45deg);
+  border-top-left-radius: 2px;
+}
+
+.tooltip-suggestions-container {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.tooltip-suggestion-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  padding: 9px 13px;
+  color: #ffd866;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.tooltip-suggestion-item:hover,
+.tooltip-suggestion-item:focus-visible {
+  background: #343a40;
+  color: #ffffff;
+}
+
+@keyframes fadeInTooltip {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

@@ -387,6 +387,20 @@
   .dashboard-filters select {
     padding-right: 28px;
   }
+  .dashboard-filters .creation-date-filter {
+    min-inline-size: 0;
+    overflow: hidden;
+  }
+  .dashboard-filters .creation-date-filter input[type="date"] {
+    inline-size: 100%;
+    min-inline-size: 0;
+  }
+  .dashboard-filters
+    .creation-date-filter
+    input[type="date"]::-webkit-date-and-time-value {
+    min-inline-size: 0;
+    text-align: left;
+  }
   .request-search-panel {
     margin: 8px 0;
     padding: 10px;

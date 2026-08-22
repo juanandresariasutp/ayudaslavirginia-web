@@ -458,6 +458,11 @@
 .form-map .leaflet-map {
   height: 280px;
 }
+.leaflet-map .leaflet-popup-content {
+  max-height: min(60vh, 430px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
 .map-popup-list {
   margin: 8px 0 10px;
   padding: 0;
@@ -485,8 +490,14 @@
   font-size: 11px;
 }
 .map-popup-list p {
+  display: -webkit-box;
   margin: 5px 0 0;
+  overflow: hidden;
   color: #31483f;
+  line-height: 1.4;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
 }
 .map-priority {
   flex: none;

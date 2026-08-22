@@ -50,7 +50,12 @@ export function StatusChangeFormModal({ request, close, sent }: StatusChangeForm
 
   return (
     <div className="modal-backdrop" onMouseDown={close}>
-      <section className="modal" role="dialog" aria-modal="true" onMouseDown={e => e.stopPropagation()}>
+      <section
+        className="modal status-change-modal"
+        role="dialog"
+        aria-modal="true"
+        onMouseDown={e => e.stopPropagation()}
+      >
         <button className="close" onClick={close}>
           ×
         </button>

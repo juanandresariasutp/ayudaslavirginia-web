@@ -116,7 +116,7 @@ export function DashboardView({
             ))}
           </select>
         </label>
-        <label>
+        <label className="creation-date-filter">
           Fecha de creación
           <input
             type="date"

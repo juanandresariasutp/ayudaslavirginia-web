@@ -164,6 +164,56 @@ body:has(.modal-backdrop) {
     width: 100%;
     min-height: 46px;
   }
+  .request-modal {
+    overflow-x: hidden;
+  }
+  .request-modal form {
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .request-modal form > *,
+  .request-modal label,
+  .request-modal .wide,
+  .request-modal .neighborhood-autocomplete-field {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .request-modal input,
+  .request-modal select,
+  .request-modal textarea {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .request-modal input[type="file"] {
+    width: 100%;
+    overflow: hidden;
+  }
+  .status-change-modal {
+    overflow-x: hidden;
+  }
+  .status-change-modal form {
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .status-change-modal form > *,
+  .status-change-modal label,
+  .status-change-modal .wide,
+  .status-change-modal .signature-field,
+  .status-change-modal .signature {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .status-change-modal input,
+  .status-change-modal select,
+  .status-change-modal textarea,
+  .status-change-modal canvas {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .status-change-modal input[type="file"] {
+    width: 100%;
+    overflow: hidden;
+  }
 }
 
 @media (max-height: 700px) {

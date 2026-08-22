@@ -42,6 +42,7 @@ interface LeafletMapProps {
   requests: HelpRequest[]
   onPick?: (location: Location) => void
   onReport?: (request: HelpRequest) => void
+  onDetails?: (request: HelpRequest) => void
 }
 
 function focusMarkerNearBottom(
@@ -56,7 +57,7 @@ function focusMarkerNearBottom(
   map.panBy([0, -verticalOffset], { animate: false })
 }
 
-export function LeafletMap({ requests, onPick, onReport }: LeafletMapProps) {
+export function LeafletMap({ requests, onPick, onReport, onDetails }: LeafletMapProps) {
   const element = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -126,6 +127,11 @@ export function LeafletMap({ requests, onPick, onReport }: LeafletMapProps) {
                 request.id
               )}">Reportar solución</button>`
             : ''
+          const details = onDetails
+            ? `<button type="button" class="map-detail-action" data-detail-request="${escapeMapText(
+                request.id
+              )}">Ver detalles</button>`
+            : ''
           return `<li><div class="map-popup-request-heading"><strong>${escapeMapText(
             request.category
           )}</strong><span class="map-priority map-priority-${priorityClass(
@@ -136,7 +142,7 @@ export function LeafletMap({ requests, onPick, onReport }: LeafletMapProps) {
             request.status
           )}</span><p>${escapeMapText(
             request.description
-          )}</p><div class="map-popup-contact">${address}${phone}</div>${report}</li>`
+          )}</p><div class="map-popup-contact">${address}${phone}</div><div class="map-popup-actions">${details}${report}</div></li>`
         })
         .join('')
 
@@ -166,12 +172,24 @@ export function LeafletMap({ requests, onPick, onReport }: LeafletMapProps) {
       if (request) onReport(request)
     }
 
+    const handleDetails = (event: MouseEvent) => {
+      const target =
+        event.target instanceof Element
+          ? event.target.closest<HTMLButtonElement>('[data-detail-request]')
+          : null
+      if (!target || !onDetails) return
+      const request = requests.find(item => item.id === target.dataset.detailRequest)
+      if (request) onDetails(request)
+    }
+
     mapElement.addEventListener('click', handleReport)
+    mapElement.addEventListener('click', handleDetails)
     return () => {
       mapElement.removeEventListener('click', handleReport)
+      mapElement.removeEventListener('click', handleDetails)
       map.remove()
     }
-  }, [requests, onPick, onReport])
+  }, [requests, onPick, onReport, onDetails])
 
   return (
     <div ref={element} className={`leaflet-map ${onPick ? 'location-picker-map' : ''}`}>

@@ -458,6 +458,11 @@
 .form-map .leaflet-map {
   height: 280px;
 }
+.leaflet-map .leaflet-popup-content {
+  max-height: min(60vh, 430px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
 .map-popup-list {
   margin: 8px 0 10px;
   padding: 0;
@@ -485,8 +490,14 @@
   font-size: 11px;
 }
 .map-popup-list p {
+  display: -webkit-box;
   margin: 5px 0 0;
+  overflow: hidden;
   color: #31483f;
+  line-height: 1.4;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
 }
 .map-priority {
   flex: none;
@@ -561,6 +572,30 @@
 .map-report-action:hover {
   border-color: #087a4b;
   background: #edf7f1;
+}
+.map-popup-actions {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+}
+.map-popup-actions .map-report-action {
+  margin-top: 0;
+}
+.map-detail-action {
+  width: 100%;
+  padding: 7px 9px;
+  border: 0;
+  border-radius: 7px;
+  color: #526d63;
+  background: #edf3ef;
+  font-size: 11px;
+  font-weight: 800;
+}
+.map-detail-action:hover,
+.map-detail-action:focus-visible {
+  color: #087a4b;
+  background: #e1eee6;
+  outline: 2px solid #087a4b26;
 }
 .missing-request-photo {
   border-color: #d74646;

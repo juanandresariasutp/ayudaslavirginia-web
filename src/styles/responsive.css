@@ -313,6 +313,15 @@ body:has(.modal-backdrop) {
     padding: 5px 8px;
     font-size: 10px;
   }
+  .map-popup-actions {
+    gap: 4px;
+    margin-top: 5px;
+  }
+  .map-detail-action {
+    min-height: 32px;
+    padding: 5px 8px;
+    font-size: 10px;
+  }
   .map-directions {
     min-height: 36px;
     padding: 8px 10px;

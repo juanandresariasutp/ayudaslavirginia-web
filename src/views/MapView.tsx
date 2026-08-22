@@ -9,6 +9,7 @@ interface MapViewProps {
   setMapCategory: (val: 'Todas' | Category) => void
   setMapPriority: (val: 'Todas' | Priority) => void
   setChangeFor: (req: HelpRequest) => void
+  setDetailFor: (req: HelpRequest) => void
 }
 
 export function MapView({
@@ -17,7 +18,8 @@ export function MapView({
   mapPriority,
   setMapCategory,
   setMapPriority,
-  setChangeFor
+  setChangeFor,
+  setDetailFor
 }: MapViewProps) {
   return (
     <>
@@ -58,7 +60,7 @@ export function MapView({
         solicitudes visibles en el mapa
       </div>
 
-      <LeafletMap requests={mapRequests} onReport={setChangeFor} />
+      <LeafletMap requests={mapRequests} onReport={setChangeFor} onDetails={setDetailFor} />
     </>
   )
 }

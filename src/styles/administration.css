@@ -47,10 +47,11 @@
     padding: 16px;
   }
   .stats {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 7px;
   }
   .stats article {
+    min-width: 0;
     padding: 11px 8px;
     gap: 7px;
     flex-direction: column;
@@ -60,7 +61,11 @@
     font-size: 20px;
   }
   .stats p {
+    max-width: 100%;
+    overflow: hidden;
     font-size: 10px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .stat-icon {
     width: 32px;

@@ -279,10 +279,11 @@ main {
 }
 .ticket-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
 }
 .ticket-card {
+  min-width: 0;
   background: white;
   padding: 19px;
   border: 1px solid #e0e8e2;
@@ -695,7 +696,7 @@ main {
     padding: 24px 22px 100px;
   }
   .ticket-grid {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 @media (max-width: 620px) {
@@ -706,7 +707,7 @@ main {
   }
   .stats,
   .ticket-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
   .modal form {
     grid-template-columns: 1fr;

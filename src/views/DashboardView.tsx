@@ -150,8 +150,8 @@ export function DashboardView({
                 setRequestSearch(val.replace(/\D/g, ''))
               }
             }}
-            placeholder='Ej. 70 o usar "Nombre Donante"'
-            aria-label="Buscar por número de solicitud o entre comillas por entidad donante"
+            placeholder='Ej. 70'
+            aria-label="Buscar por número de solicitud"
           />
         </label>
       </section>

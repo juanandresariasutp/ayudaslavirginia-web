@@ -6,13 +6,15 @@ import { mapPrivate } from '../../utils/mappers'
 interface ApprovalDetailModalProps {
   change: ChangeRequest
   session: Session
+  role?: 'admin' | 'superadmin'
   close: () => void
-  review: (change: ChangeRequest, state: 'Aprobado' | 'Rechazado') => Promise<void>
+  review: (change: ChangeRequest, state: 'Aprobado' | 'Rechazado', donatedBy?: string) => Promise<void>
 }
 
 export function ApprovalDetailModal({
   change,
   session,
+  role = 'admin',
   close,
   review
 }: ApprovalDetailModalProps) {
@@ -21,6 +23,7 @@ export function ApprovalDetailModal({
   const [requestPhotoUrl, setRequestPhotoUrl] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [donatedByInput, setDonatedByInput] = useState(change.donatedBy ?? '')
 
   useEffect(() => {
     let active = true
@@ -41,6 +44,7 @@ export function ApprovalDetailModal({
         const privateRequest = mapPrivate(rows[0])
         setRequest(privateRequest)
         setEvidenceUrl(evidence)
+        setDonatedByInput(change.donatedBy ?? privateRequest.donatedBy ?? '')
         setError('')
         if (privateRequest.requestPhotoName) {
           try {
@@ -62,7 +66,17 @@ export function ApprovalDetailModal({
   async function decide(state: 'Aprobado' | 'Rechazado') {
     setBusy(true)
     try {
-      await review(change, state)
+      await review(change, state, donatedByInput.trim() || undefined)
+      close()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function updateDonatedByOnly() {
+    setBusy(true)
+    try {
+      await review(change, change.state === 'Aprobado' ? 'Aprobado' : 'Rechazado', donatedByInput.trim() || undefined)
       close()
     } finally {
       setBusy(false)
@@ -72,6 +86,8 @@ export function ApprovalDetailModal({
   const signatureUrl = change.signature?.startsWith('<svg')
     ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(change.signature)}`
     : ''
+
+  const isLockedForAdmin = change.state !== 'Pendiente' && role !== 'superadmin'
 
   return (
     <div className="modal-backdrop" onMouseDown={close}>
@@ -148,6 +164,25 @@ export function ApprovalDetailModal({
                 <small>Observaciones del cambio</small>
                 <p>{change.notes || 'Sin observaciones'}</p>
               </div>
+              <div className="wide donated-by-container">
+                <label htmlFor="donated-by-input">
+                  <small>Donado por (Opcional)</small>
+                </label>
+                <input
+                  id="donated-by-input"
+                  type="text"
+                  className="donated-by-input"
+                  value={donatedByInput}
+                  onChange={e => setDonatedByInput(e.target.value)}
+                  placeholder="Ej. Fundación Antioquia"
+                  disabled={isLockedForAdmin || busy}
+                />
+                {isLockedForAdmin && (
+                  <small className="field-locked-hint">
+                    🔒 Solicitud respondida. Solo un Superadmin puede modificar este campo.
+                  </small>
+                )}
+              </div>
             </section>
             <section className="detail-media">
               {requestPhotoUrl && (
@@ -176,6 +211,13 @@ export function ApprovalDetailModal({
                 </button>
                 <button className="primary" disabled={busy} onClick={() => decide('Aprobado')}>
                   Aprobar cambio
+                </button>
+              </div>
+            )}
+            {change.state !== 'Pendiente' && role === 'superadmin' && (
+              <div className="detail-actions">
+                <button className="primary" disabled={busy} onClick={updateDonatedByOnly}>
+                  {busy ? 'Guardando…' : 'Actualizar Donado Por (Superadmin)'}
                 </button>
               </div>
             )}

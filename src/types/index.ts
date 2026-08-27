@@ -62,6 +62,7 @@ export interface HelpRequest {
   requestPhotoName?: string;
   evidencePhotoName?: string;
   signature?: string;
+  donatedBy?: string;
 }
 
 export interface AdminUser {
@@ -86,6 +87,7 @@ export interface ChangeRequest {
   state: "Pendiente" | "Aprobado" | "Rechazado";
   reviewedByName?: string;
   reviewedAt?: string;
+  donatedBy?: string;
 }
 
 export interface Session {

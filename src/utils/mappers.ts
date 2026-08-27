@@ -20,7 +20,8 @@ export function mapPublic(row: Record<string, unknown>): HelpRequest {
       row.public_latitude == null
         ? undefined
         : { latitude: Number(row.public_latitude), longitude: Number(row.public_longitude) },
-    requestPhotoName: row.request_photo_path ? String(row.request_photo_path) : undefined
+    requestPhotoName: row.request_photo_path ? String(row.request_photo_path) : undefined,
+    donatedBy: row.donated_by ? String(row.donated_by) : undefined
   }
 }
 
@@ -43,7 +44,8 @@ export function mapPrivate(row: Record<string, unknown>): HelpRequest {
       row.exact_latitude == null
         ? undefined
         : { latitude: Number(row.exact_latitude), longitude: Number(row.exact_longitude) },
-    requestPhotoName: row.request_photo_path ? String(row.request_photo_path) : undefined
+    requestPhotoName: row.request_photo_path ? String(row.request_photo_path) : undefined,
+    donatedBy: row.donated_by ? String(row.donated_by) : undefined
   }
 }
 
@@ -87,6 +89,7 @@ export function mapChange(row: Record<string, unknown>): ChangeRequest {
         ? 'Rechazado'
         : 'Pendiente',
     reviewedByName: reviewer?.full_name ? String(reviewer.full_name) : undefined,
-    reviewedAt: row.reviewed_at ? String(row.reviewed_at) : undefined
+    reviewedAt: row.reviewed_at ? String(row.reviewed_at) : undefined,
+    donatedBy: row.donated_by ? String(row.donated_by) : undefined
   }
 }

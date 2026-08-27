@@ -114,8 +114,8 @@ export async function insertChange(payload: Record<string, unknown>) {
   return request('/rest/v1/status_change_requests', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(payload) })
 }
 
-export async function reviewChange(session: Session, id: string, approve: boolean, reason?: string) {
-  return request('/rest/v1/rpc/approve_status_change', { method: 'POST', body: JSON.stringify({ change_id: id, approve, reason: reason ?? null }) }, session)
+export async function reviewChange(session: Session, id: string, approve: boolean, reason?: string, donatedBy?: string) {
+  return request('/rest/v1/rpc/approve_status_change', { method: 'POST', body: JSON.stringify({ change_id: id, approve, reason: reason ?? null, p_donated_by: donatedBy ?? null }) }, session)
 }
 
 export async function deleteRequest(session: Session, id: string) {

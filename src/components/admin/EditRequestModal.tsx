@@ -7,11 +7,12 @@ import { NeighborhoodInput } from '../common/NeighborhoodInput'
 interface EditRequestModalProps {
   request: HelpRequest
   session: Session
+  role?: 'admin' | 'superadmin'
   close: () => void
   saved: (request: HelpRequest) => void
 }
 
-export function EditRequestModal({ request, session, close, saved }: EditRequestModalProps) {
+export function EditRequestModal({ request, session, role = 'admin', close, saved }: EditRequestModalProps) {
   const [busy, setBusy] = useState(false)
   const [editCategory, setEditCategory] = useState<Category>(request.category)
   const editPhotoRequired = categoryRequiresPhoto(editCategory)
@@ -38,6 +39,7 @@ export function EditRequestModal({ request, session, close, saved }: EditRequest
     const form = new FormData(event.currentTarget)
     const photo = form.get('requestPhoto') as File
     const nextCategory = String(form.get('category')) as Category
+    const donatedByVal = String(form.get('donatedBy') ?? '').trim()
 
     if (
       categoryRequiresPhoto(nextCategory) &&
@@ -54,7 +56,8 @@ export function EditRequestModal({ request, session, close, saved }: EditRequest
       description: String(form.get('description')),
       category: nextCategory,
       priority: String(form.get('priority')) as Priority,
-      status: String(form.get('status')) as Status
+      status: String(form.get('status')) as Status,
+      donatedBy: donatedByVal || undefined
     }
 
     setBusy(true)
@@ -75,7 +78,8 @@ export function EditRequestModal({ request, session, close, saved }: EditRequest
             : next.status === 'En progreso'
             ? 'in_progress'
             : 'completed',
-        request_photo_path: photoPath
+        request_photo_path: photoPath,
+        donated_by: next.donatedBy ?? null
       })
 
       saved({ ...next, requestPhotoName: photoPath })
@@ -129,6 +133,18 @@ export function EditRequestModal({ request, session, close, saved }: EditRequest
               <option>En progreso</option>
               <option>Completada</option>
             </select>
+          </label>
+          <label className="wide">
+            Donado por (Opcional)
+            <input
+              name="donatedBy"
+              defaultValue={request.donatedBy ?? ''}
+              placeholder="Ej. Fundación Antioquia"
+              disabled={Boolean(request.donatedBy) && role !== 'superadmin'}
+            />
+            {Boolean(request.donatedBy) && role !== 'superadmin' && (
+              <small>🔒 Solo un Superadmin puede modificar una entidad donante ya registrada.</small>
+            )}
           </label>
           <label className="wide">
             Descripción

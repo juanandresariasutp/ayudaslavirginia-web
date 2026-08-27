@@ -140,12 +140,17 @@ export function DashboardView({
           <span>Buscar solicitud por número</span>
           <input
             type="text"
-            inputMode="numeric"
-            pattern="[0-9]*"
-            maxLength={10}
+            maxLength={80}
             value={requestSearch}
-            onChange={event => setRequestSearch(event.target.value.replace(/\D/g, ''))}
-            placeholder="Ej. 70 para encontrar solicitud_0070"
+            onChange={event => {
+              const val = event.target.value
+              if (val.includes('"')) {
+                setRequestSearch(val)
+              } else {
+                setRequestSearch(val.replace(/\D/g, ''))
+              }
+            }}
+            placeholder='Ej. 70'
             aria-label="Buscar por número de solicitud"
           />
         </label>

@@ -100,19 +100,32 @@ export default function App() {
   const [notice, setNotice] = useState("");
 
   const ordered = useMemo(
-    () =>
-      requests
-        .filter(
-          (r) =>
-            (!requestDate ||
-              requestCalendarDate(r.createdAt) === requestDate) &&
-            (requestSearch
-              ? requestCodeNumber(r) === String(Number(requestSearch))
-              : (category === "Todas" || r.category === category) &&
-                (status === "Activas"
-                  ? r.status !== "Completada"
-                  : r.status === status)),
-        )
+    () => {
+      const rawSearch = requestSearch.trim();
+      const hasQuotes = rawSearch.includes('"');
+      const donorQuery = hasQuotes ? rawSearch.replace(/"/g, '').trim().toLowerCase() : '';
+      const numericQuery = !hasQuotes ? rawSearch.replace(/\D/g, '') : '';
+
+      return requests
+        .filter((r) => {
+          const matchesDate = !requestDate || requestCalendarDate(r.createdAt) === requestDate;
+          if (!matchesDate) return false;
+
+          if (rawSearch) {
+            if (hasQuotes) {
+              return donorQuery
+                ? (r.donatedBy ? r.donatedBy.toLowerCase().includes(donorQuery) : false) ||
+                  (r.publicCode ? r.publicCode.toLowerCase().includes(donorQuery) : false)
+                : true;
+            }
+            return numericQuery ? requestCodeNumber(r) === String(Number(numericQuery)) : true;
+          }
+
+          return (
+            (category === "Todas" || r.category === category) &&
+            (status === "Activas" ? r.status !== "Completada" : r.status === status)
+          );
+        })
         .sort((a, b) => {
           if (a.status === "Completada" && b.status !== "Completada") return 1;
           if (b.status === "Completada" && a.status !== "Completada") return -1;
@@ -124,7 +137,8 @@ export default function App() {
           return sort === "oldest"
             ? +new Date(a.createdAt) - +new Date(b.createdAt)
             : +new Date(b.createdAt) - +new Date(a.createdAt);
-        }),
+        });
+    },
     [requests, category, status, sort, requestSearch, requestDate],
   );
 

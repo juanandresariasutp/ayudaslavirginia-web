@@ -62,8 +62,21 @@ export function AdminPanel({
   const [approvalSearch, setApprovalSearch] = useState('')
 
   const filteredChanges = useMemo(() => {
-    if (!approvalSearch) return changes
-    const searchedNumber = String(Number(approvalSearch))
+    const rawSearch = approvalSearch.trim()
+    if (!rawSearch) return changes
+    const hasQuotes = rawSearch.includes('"')
+    if (hasQuotes) {
+      const donorQuery = rawSearch.replace(/"/g, '').trim().toLowerCase()
+      return changes.filter(change => {
+        const donor = change.donatedBy ?? change.requestDetails?.donatedBy ?? ''
+        const code = change.requestDetails?.publicCode ?? change.requestId
+        return (
+          (donor ? donor.toLowerCase().includes(donorQuery) : false) ||
+          code.toLowerCase().includes(donorQuery)
+        )
+      })
+    }
+    const searchedNumber = String(Number(rawSearch.replace(/\D/g, '')))
     return changes.filter(change => {
       const requestCode = change.requestDetails?.publicCode ?? change.requestId
       const number = requestCode.match(/(\d+)$/)?.[1]
@@ -154,30 +167,34 @@ export function AdminPanel({
     }
   }
 
-  async function review(change: ChangeRequest, state: 'Aprobado' | 'Rechazado') {
+  async function review(change: ChangeRequest, state: 'Aprobado' | 'Rechazado', donatedBy?: string) {
     try {
       await reviewChange(
         session,
         change.id,
         state === 'Aprobado',
-        state === 'Rechazado' ? 'Rechazado por administración' : undefined
+        state === 'Rechazado' ? 'Rechazado por administración' : undefined,
+        donatedBy
       )
       const rows = await getChanges(session)
       setChanges(rows.map(mapChange))
-      if (state === 'Aprobado') {
-        setRequests(list =>
-          list.map(r =>
-            r.id === change.requestId
-              ? {
-                  ...r,
-                  status: change.requestedStatus,
-                  evidencePhotoName: change.evidencePhotoName,
-                  signature: change.signature
-                }
-              : r
-          )
+      setRequests(list =>
+        list.map(r =>
+          r.id === change.requestId
+            ? {
+                ...r,
+                ...(state === 'Aprobado'
+                  ? {
+                      status: change.requestedStatus,
+                      evidencePhotoName: change.evidencePhotoName,
+                      signature: change.signature
+                    }
+                  : {}),
+                donatedBy: donatedBy ?? r.donatedBy
+              }
+            : r
         )
-      }
+      )
     } catch (error) {
       alert(error instanceof Error ? error.message : 'No fue posible revisar el cambio')
     }
@@ -318,13 +335,18 @@ export function AdminPanel({
               Buscar por número de solicitud
               <input
                 type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                maxLength={10}
+                maxLength={80}
                 value={approvalSearch}
-                onChange={event => setApprovalSearch(event.target.value.replace(/\D/g, ''))}
-                placeholder="Ej. 329 para encontrar solicitud_0329"
-                aria-label="Buscar aprobación por número de solicitud"
+                onChange={event => {
+                  const val = event.target.value
+                  if (val.includes('"')) {
+                    setApprovalSearch(val)
+                  } else {
+                    setApprovalSearch(val.replace(/\D/g, ''))
+                  }
+                }}
+                placeholder='Ej. 329 o usar "Nombre Donante"'
+                aria-label="Buscar aprobación por número de solicitud o entre comillas por donante"
               />
             </label>
           </section>
@@ -523,6 +545,7 @@ export function AdminPanel({
         <EditRequestModal
           request={editingRequest}
           session={session}
+          role={role}
           close={() => setEditingRequest(undefined)}
           saved={next =>
             setRequests(list => list.map(r => (r.id === next.id ? next : r)))
@@ -554,6 +577,7 @@ export function AdminPanel({
         <ApprovalDetailModal
           change={selectedChange}
           session={session}
+          role={role}
           close={() => setSelectedChange(undefined)}
           review={review}
         />

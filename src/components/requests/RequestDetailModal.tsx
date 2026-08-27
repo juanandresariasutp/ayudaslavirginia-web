@@ -119,6 +119,12 @@ export function RequestDetailModal({
                 <small>Descripción de la ayuda</small>
                 <p>{request.description}</p>
               </div>
+              {request.donatedBy && (
+                <div className="wide donated-by-detail">
+                  <small>Donado por</small>
+                  <b>🎁 {request.donatedBy}</b>
+                </div>
+              )}
             </section>
           </>
         )}
@@ -136,6 +142,12 @@ export function RequestDetailModal({
               <small>Descripción de la ayuda</small>
               <p>{request.description}</p>
             </div>
+            {request.donatedBy && (
+              <div className="wide donated-by-detail">
+                <small>Donado por</small>
+                <b>🎁 {request.donatedBy}</b>
+              </div>
+            )}
           </section>
         )}
         {photoUrl && (

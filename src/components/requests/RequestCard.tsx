@@ -35,6 +35,11 @@ export function RequestCard({
             <a href={`tel:${request.phone}`}>☎ {request.phone}</a>
           </div>
         )}
+      {request.donatedBy && (
+        <div className="donated-by-badge" title={`Ayuda donada por: ${request.donatedBy}`}>
+          🎁 Donado por: <strong>{request.donatedBy}</strong>
+        </div>
+      )}
       {request.status === 'Completada' && (
         <div className="completion-photos" aria-label="Evidencias de solicitud completada">
           <figure>

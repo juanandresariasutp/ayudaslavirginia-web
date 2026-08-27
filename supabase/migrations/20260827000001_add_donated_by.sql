@@ -3,12 +3,15 @@
 alter table public.help_requests add column if not exists donated_by text null;
 alter table public.status_change_requests add column if not exists donated_by text null;
 
--- Actualizar función approve_status_change con parámetro opcional p_donated_by
+-- Eliminar versión anterior si existe para evitar ambigüedades en PostgREST
+drop function if exists public.approve_status_change(uuid, boolean, text);
+
+-- Actualizar función approve_status_change con parámetro opcional donated_by
 create or replace function public.approve_status_change(
   change_id uuid,
   approve boolean,
   reason text default null,
-  p_donated_by text default null
+  donated_by text default null
 )
 returns void language plpgsql security definer set search_path = public
 as $$
@@ -24,7 +27,7 @@ begin
     reviewed_by = auth.uid(),
     reviewed_at = now(),
     rejection_reason = case when approve then null else reason end,
-    donated_by = coalesce(p_donated_by, donated_by)
+    donated_by = coalesce(approve_status_change.donated_by, status_change_requests.donated_by)
   where id = change_id;
 
   if approve then
@@ -32,7 +35,7 @@ begin
       status = change_row.target_status,
       updated_at = now(),
       completed_at = case when change_row.target_status = 'completed' then now() else completed_at end,
-      donated_by = coalesce(p_donated_by, donated_by)
+      donated_by = coalesce(approve_status_change.donated_by, help_requests.donated_by)
     where id = change_row.help_request_id;
   end if;
 
@@ -42,7 +45,7 @@ begin
     case when approve then 'approve_status_change' else 'reject_status_change' end,
     'status_change_request',
     change_id,
-    jsonb_build_object('reason', reason, 'donated_by', p_donated_by)
+    jsonb_build_object('reason', reason, 'donated_by', approve_status_change.donated_by)
   );
 end $$;
 

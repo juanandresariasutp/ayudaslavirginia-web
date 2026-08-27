@@ -51,12 +51,23 @@ end $$;
 
 grant execute on function public.approve_status_change(uuid, boolean, text, text) to authenticated;
 
--- Actualizar vista pública para proyectar donated_by
-create or replace view public.public_help_requests with (security_invoker = true) as
+-- Actualizar vista pública para proyectar donated_by conservando todas las columnas existentes
+drop view if exists public.public_help_requests;
+
+create view public.public_help_requests
+with (security_invoker = true, security_barrier = true) as
 select id, public_code, neighborhood, description, category, status,
        coalesce(verified_priority, declared_priority) as priority,
-       public_latitude, public_longitude, created_at, donated_by
+       public_latitude, public_longitude,
+       public_contact_phone as contact_phone,
+       public_contact_address as contact_address,
+       request_photo_path,
+       donated_by,
+       created_at
 from public.help_requests;
 
+revoke all on public.public_help_requests from public;
+grant select on public.public_help_requests to anon, authenticated;
+
 -- Otorgar permisos de selección del campo donated_by en public.help_requests
-grant select (id, public_code, neighborhood, description, category, status, declared_priority, verified_priority, public_latitude, public_longitude, created_at, donated_by) on public.help_requests to anon, authenticated;
+grant select (donated_by) on public.help_requests to anon, authenticated;

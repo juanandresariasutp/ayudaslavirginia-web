@@ -62,8 +62,21 @@ export function AdminPanel({
   const [approvalSearch, setApprovalSearch] = useState('')
 
   const filteredChanges = useMemo(() => {
-    if (!approvalSearch) return changes
-    const searchedNumber = String(Number(approvalSearch))
+    const rawSearch = approvalSearch.trim()
+    if (!rawSearch) return changes
+    const hasQuotes = rawSearch.includes('"')
+    if (hasQuotes) {
+      const donorQuery = rawSearch.replace(/"/g, '').trim().toLowerCase()
+      return changes.filter(change => {
+        const donor = change.donatedBy ?? change.requestDetails?.donatedBy ?? ''
+        const code = change.requestDetails?.publicCode ?? change.requestId
+        return (
+          (donor ? donor.toLowerCase().includes(donorQuery) : false) ||
+          code.toLowerCase().includes(donorQuery)
+        )
+      })
+    }
+    const searchedNumber = String(Number(rawSearch.replace(/\D/g, '')))
     return changes.filter(change => {
       const requestCode = change.requestDetails?.publicCode ?? change.requestId
       const number = requestCode.match(/(\d+)$/)?.[1]
@@ -322,13 +335,18 @@ export function AdminPanel({
               Buscar por número de solicitud
               <input
                 type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                maxLength={10}
+                maxLength={80}
                 value={approvalSearch}
-                onChange={event => setApprovalSearch(event.target.value.replace(/\D/g, ''))}
-                placeholder="Ej. 329 para encontrar solicitud_0329"
-                aria-label="Buscar aprobación por número de solicitud"
+                onChange={event => {
+                  const val = event.target.value
+                  if (val.includes('"')) {
+                    setApprovalSearch(val)
+                  } else {
+                    setApprovalSearch(val.replace(/\D/g, ''))
+                  }
+                }}
+                placeholder='Ej. 329 o usar "Nombre Donante"'
+                aria-label="Buscar aprobación por número de solicitud o entre comillas por donante"
               />
             </label>
           </section>

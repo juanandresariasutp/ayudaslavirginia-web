@@ -101,20 +101,24 @@ export default function App() {
 
   const ordered = useMemo(
     () => {
-      const term = requestSearch.trim().toLowerCase();
-      const numericSearch = !isNaN(Number(term)) && term !== '';
+      const rawSearch = requestSearch.trim();
+      const hasQuotes = rawSearch.includes('"');
+      const donorQuery = hasQuotes ? rawSearch.replace(/"/g, '').trim().toLowerCase() : '';
+      const numericQuery = !hasQuotes ? rawSearch.replace(/\D/g, '') : '';
+
       return requests
         .filter((r) => {
           const matchesDate = !requestDate || requestCalendarDate(r.createdAt) === requestDate;
           if (!matchesDate) return false;
 
-          if (requestSearch) {
-            return (
-              (numericSearch && requestCodeNumber(r) === String(Number(term))) ||
-              (r.publicCode ? r.publicCode.toLowerCase().includes(term) : false) ||
-              (r.donatedBy ? r.donatedBy.toLowerCase().includes(term) : false) ||
-              (r.neighborhood ? r.neighborhood.toLowerCase().includes(term) : false)
-            );
+          if (rawSearch) {
+            if (hasQuotes) {
+              return donorQuery
+                ? (r.donatedBy ? r.donatedBy.toLowerCase().includes(donorQuery) : false) ||
+                  (r.publicCode ? r.publicCode.toLowerCase().includes(donorQuery) : false)
+                : true;
+            }
+            return numericQuery ? requestCodeNumber(r) === String(Number(numericQuery)) : true;
           }
 
           return (

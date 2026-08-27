@@ -140,13 +140,18 @@ export function DashboardView({
           <span>Buscar solicitud por número</span>
           <input
             type="text"
-            inputMode="numeric"
-            pattern="[0-9]*"
-            maxLength={10}
+            maxLength={80}
             value={requestSearch}
-            onChange={event => setRequestSearch(event.target.value.replace(/\D/g, ''))}
-            placeholder="Ej. 70 para encontrar solicitud_0070"
-            aria-label="Buscar por número de solicitud"
+            onChange={event => {
+              const val = event.target.value
+              if (val.includes('"')) {
+                setRequestSearch(val)
+              } else {
+                setRequestSearch(val.replace(/\D/g, ''))
+              }
+            }}
+            placeholder='Ej. 70 o usar "Nombre Donante"'
+            aria-label="Buscar por número de solicitud o entre comillas por entidad donante"
           />
         </label>
       </section>
